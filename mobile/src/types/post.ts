@@ -11,3 +11,13 @@ export type Post = {
 };
 
 export type FeedType = 'forYou' | 'popular' | 'latest' | 'provideSupport';
+
+/** Matches backend PostCreateRequest in backend/models/posts.py */
+export type PostCreateRequest = {
+  title: string;
+  content: string;
+  image_url?: string;
+  post_type: string;
+  post_category: string;
+  user_id: string;
+};
