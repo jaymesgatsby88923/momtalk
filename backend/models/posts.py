@@ -17,6 +17,7 @@ class  PostList(BaseModel):
         post_category: str
         user_id: str
         test_only: str
+        comment_count: int
 class  PostReactionRequest(BaseModel):
     post_id: str
     reaction: str

@@ -26,7 +26,7 @@ def list_popular_posts(current_user = Depends(get_current_user)):
 
 @router.get("/latest")
 def list_latest_posts(current_user = Depends(get_current_user)):
-    return post_service.list_for_you(current_user)
+    return post_service.list_latest(current_user)
 
 @router.get("/detail/{post_id}")
 def get_post_detail(post_id: str, current_user = Depends(get_current_user)):

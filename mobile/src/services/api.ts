@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiErrorResponse } from '../types/api';
 
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = 'https://momtalk-backend.onrender.com';
 export const TOKEN_STORAGE_KEY = '@momtalk:access_token';
 
 export class ApiError extends Error {
