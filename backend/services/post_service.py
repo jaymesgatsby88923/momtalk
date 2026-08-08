@@ -20,7 +20,8 @@ def list_for_you(current_user):
             love_this,
             community_id,
             Communities(name),
-            Comments(count)
+            Comments(count),
+            Users(display_name)
         """)
         .eq("test_only", "for you")
         .execute()
@@ -36,6 +37,9 @@ def list_for_you(current_user):
 
         community = post.pop("Communities", None)
         post["community_name"] = community["name"] if community else None
+
+        user = post.pop("Users", None)
+        post["display_name"] = user["display_name"] if user else None
 
     return posts
 
@@ -54,7 +58,8 @@ def list_popular(current_user):
             love_this,
             community_id,
             Communities(name),
-            Comments(count)
+            Comments(count),
+            Users(display_name)
         """)
         .eq("test_only", "popular")
         .execute()
@@ -71,6 +76,9 @@ def list_popular(current_user):
 
         community = post.pop("Communities", None)
         post["community_name"] = community["name"] if community else None
+
+        user = post.pop("Users", None)
+        post["display_name"] = user["display_name"] if user else None
 
     return posts
 
@@ -90,7 +98,8 @@ def list_latest(current_user):
             image_url,
             community_id,
             Communities(name),
-            Comments(count)
+            Comments(count),
+            Users(display_name)
         """)
         .eq("test_only", "latest")
         .execute()
@@ -105,6 +114,9 @@ def list_latest(current_user):
 
         community = post.pop("Communities", None)
         post["community_name"] = community["name"] if community else None
+
+        user = post.pop("Users", None)
+        post["display_name"] = user["display_name"] if user else None
 
     return posts
 

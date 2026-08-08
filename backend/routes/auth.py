@@ -25,5 +25,5 @@ def signup(signup_request: SignUpRequest):
 def current_user(current_user = Depends(get_current_user)):
     return {
         "first_name": current_user["first_name"],
-        "role": current_user["role"]
+        
     }
