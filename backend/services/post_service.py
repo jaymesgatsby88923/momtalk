@@ -152,7 +152,7 @@ def create_post(post_create_request: PostCreateRequest, current_user):
             "image_url": post_create_request.image_url,
             "post_type": post_create_request.post_type,
             "post_category": post_create_request.post_category,
-            "user_id": current_user.user_id
+            "user_id": current_user["user_id"],
         })
         .execute()
     ) 
