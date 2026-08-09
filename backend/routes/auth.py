@@ -24,6 +24,6 @@ def signup(signup_request: SignUpRequest):
 @router.get("/current-user")
 def current_user(current_user = Depends(get_current_user)):
     return {
-        "first_name": current_user["first_name"],
+        "first_name": current_user["display_name"]
         
     }

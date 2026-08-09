@@ -9,8 +9,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppText, PostCard } from '../components';
+import { AppScreen, AppText, PostCard } from '../components';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest, ApiError } from '../services/api';
 import { FeedType, Post } from '../types/post';
@@ -150,8 +149,10 @@ export function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
+    <AppScreen
+      edges={['top']}
+      contentStyle={styles.screenContent}
+      header={
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -182,20 +183,18 @@ export function HomeScreen() {
             );
           })}
         </ScrollView>
-
-        {renderContent()}
-      </View>
-    </SafeAreaView>
+      }
+    >
+      {renderContent()}
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenContent: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
-  },
-  container: {
-    flex: 1,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   tabsScroll: {
     flexGrow: 0,

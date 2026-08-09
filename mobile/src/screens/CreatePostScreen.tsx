@@ -11,8 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppText, PrimaryButton } from '../components';
+import { AppScreen, AppText, PrimaryButton } from '../components';
 import { PostTypeCard, PostTypeOption } from '../components/PostTypeCard';
 import { ApiError } from '../services/api';
 import { postService } from '../services/postService';
@@ -148,7 +147,7 @@ export function CreatePostScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <AppScreen showLogo={false} edges={['top', 'bottom']} contentStyle={styles.screenContent}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -296,14 +295,15 @@ export function CreatePostScreen() {
           </View>
         ) : null}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenContent: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   flex: {
     flex: 1,
