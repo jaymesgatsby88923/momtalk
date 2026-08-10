@@ -11,8 +11,8 @@ router = APIRouter(
     tags=["Communities"])
 
 @router.get("/list")
-def list_communities(community_list_request: Community, current_user = Depends(get_current_user)):
-    return community_service.list_communities(community_list_request, current_user)
+def list_communities(current_user = Depends(get_current_user)):
+    return community_service.list_communities(current_user["user_id"])
 
 @router.get("/detail/{community_id}")
 def get_community_detail(community_id: str, current_user = Depends(get_current_user)):
