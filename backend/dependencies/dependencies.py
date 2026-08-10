@@ -1,4 +1,4 @@
-from database.supabase import admin_supabase
+from database.supabase import admin_supabase, user_supabase
 from models.auth import LoginRequest, SignUpRequest
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
@@ -20,7 +20,7 @@ def get_current_user(credentials = Depends(security)):
     auth_user_id = user.user.id
 
     response = (
-        admin_supabase
+        user_supabase
         .table("Users")
         .select("*")
         .eq("auth_user_id", auth_user_id)
