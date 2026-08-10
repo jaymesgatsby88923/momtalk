@@ -4,6 +4,15 @@ export type AuthStackParamList = {
   Onboarding: undefined;
 };
 
+export type CommunitiesStackParamList = {
+  CommunitiesList: undefined;
+  CommunityDetail: {
+    communityId: string;
+    communityName?: string;
+    isJoined?: boolean;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Communities: undefined;
@@ -14,6 +23,9 @@ export type MainTabParamList = {
 
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends AuthStackParamList, MainTabParamList {}
+    interface RootParamList
+      extends AuthStackParamList,
+        MainTabParamList,
+        CommunitiesStackParamList {}
   }
 }

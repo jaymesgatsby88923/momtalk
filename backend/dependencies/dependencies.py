@@ -30,7 +30,7 @@ def get_current_user(credentials = Depends(security)):
    
     if not response.data:
         raise HTTPException(status_code=404, detail="User profile not found")
-
+  
     return response.data[0]
 
 

@@ -1,5 +1,5 @@
 from database.supabase import admin_supabase
-from models.posts import PostReactionRequest, PostCreateRequest
+from models.communities import Community
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
 from datetime import datetime
@@ -18,6 +18,7 @@ def list_communities(current_user_id: str):
     user_communities_response = admin_supabase.table("User_Community") \
         .select("community_id") \
         .eq("user_id", current_user_id) \
+        .eq("active", True) \
         .execute()
 
     joined_community_ids = {
@@ -58,9 +59,32 @@ def get_community_detail(community_id: str, current_user_id: str):
         .eq("community_id", community_id) 
         .execute()
         )
-    posts = posts_response.data[0]
+    posts = posts_response.data
 
     return {
         "community": community,
         "posts": posts
+    }
+
+def join_community(community: Community, current_user_profile: object):
+    admin_supabase.table("User_Community") \
+        .insert({
+            "user_id": current_user_profile["user_id"],
+            "community_id": community.community_id
+        }) \
+        .execute()
+
+    return {
+        "message": "Joined community successfully"
+    }
+
+def leave_community(community: Community, current_user_profile: object):
+    admin_supabase.table("User_Community") \
+        .update({"active": False}) \
+        .eq("user_id", current_user_profile["user_id"]) \
+        .eq("community_id", community.community_id) \
+        .execute()
+
+    return {
+        "message": "Left community successfully"
     }

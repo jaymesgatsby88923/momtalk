@@ -4,8 +4,7 @@ from datetime import date
 
 class Community(BaseModel):
     community_id: str
-    name: str
-    description: str
-    members_count: int
-    category: str
-    
+    name: Optional[str] = None
+    description: Optional[str] = None
+    members_count: Optional[int] = None
+    category: Optional[str] = None

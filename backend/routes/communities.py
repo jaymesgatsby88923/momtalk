@@ -25,3 +25,7 @@ def get_community_detail(community_id: str, current_user = Depends(get_current_u
 @router.post("/join")
 def join_community(community_join_request: Community, current_user = Depends(get_current_user)):
     return community_service.join_community(community_join_request, current_user)
+
+@router.patch("/leave")
+def leave_community(community_leave_request: Community, current_user = Depends(get_current_user)):
+    return community_service.leave_community(community_leave_request, current_user)
