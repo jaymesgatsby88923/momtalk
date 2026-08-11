@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { AppScreen, AppText } from '../components';
@@ -45,12 +48,15 @@ function ReactionItem({ emoji, label, count }: ReactionItemProps) {
 type CommentRowProps = {
   comment: PostComment;
   onToggleLike: (comment: PostComment) => void;
+  onReply: (comment: PostComment) => void;
   likeLoading: boolean;
 };
 
-function CommentRow({ comment, onToggleLike, likeLoading }: CommentRowProps) {
+function CommentRow({ comment, onToggleLike, onReply, likeLoading }: CommentRowProps) {
+  const isReply = Boolean(comment.parent_comment_id);
+
   return (
-    <View style={styles.commentRow}>
+    <View style={[styles.commentRow, isReply && styles.replyIndent]}>
       <View style={styles.commentAvatar} />
       <View style={styles.commentBody}>
         <View style={styles.commentHeader}>
@@ -64,6 +70,11 @@ function CommentRow({ comment, onToggleLike, likeLoading }: CommentRowProps) {
         <AppText variant="body" color="textSecondary" style={styles.commentContent}>
           {comment.content}
         </AppText>
+        <Pressable onPress={() => onReply(comment)} hitSlop={8} style={styles.replyButton}>
+          <AppText variant="caption" color="primary">
+            Reply
+          </AppText>
+        </Pressable>
       </View>
       <Pressable
         onPress={() => onToggleLike(comment)}
@@ -88,12 +99,16 @@ export function PostDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<DetailRouteProp>();
   const { postId } = route.params;
+  const inputRef = useRef<TextInput>(null);
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [likeLoadingId, setLikeLoadingId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<PostComment | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchDetail = useCallback(
     async (isRefresh = false) => {
@@ -157,6 +172,53 @@ export function PostDetailScreen() {
     }
   };
 
+  const handleReply = (comment: PostComment) => {
+    setReplyingTo(comment);
+    inputRef.current?.focus();
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const handleSubmitComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed || submitting) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const newComment = await postService.createComment(
+        postId,
+        trimmed,
+        replyingTo?.comment_id,
+      );
+
+      setPost((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return {
+          ...current,
+          comments: [...current.comments, newComment],
+        };
+      });
+
+      setCommentText('');
+      setReplyingTo(null);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : 'Could not post your comment.';
+      setError(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading && !refreshing) {
     return (
       <AppScreen showLogo={false} centered>
@@ -184,93 +246,151 @@ export function PostDetailScreen() {
     return null;
   }
 
-  return (
-    <AppScreen showLogo={false} edges={['top']} contentStyle={styles.screenContent}>
-      <View style={styles.topNav}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
-        </Pressable>
-      </View>
+  const canSubmit = commentText.trim().length > 0 && !submitting;
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchDetail(true)}
-            tintColor={theme.colors.primary}
-          />
-        }
+  return (
+    <AppScreen showLogo={false} edges={['top', 'bottom']} contentStyle={styles.screenContent}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}
       >
-        <View style={styles.postHeader}>
-          <View style={styles.avatar} />
-          <View style={styles.headerText}>
-            <AppText variant="caption" style={styles.authorName}>
-              {post.display_name ?? 'Anonymous'}
-            </AppText>
-            <View style={styles.metaRow}>
-              {post.community_name ? (
-                <AppText variant="caption" color="primary" style={styles.communityName}>
-                  {post.community_name}
+        <View style={styles.topNav}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchDetail(true)}
+              tintColor={theme.colors.primary}
+            />
+          }
+        >
+          <View style={styles.postHeader}>
+            <View style={styles.avatar} />
+            <View style={styles.headerText}>
+              <AppText variant="caption" style={styles.authorName}>
+                {post.display_name ?? 'Anonymous'}
+              </AppText>
+              <View style={styles.metaRow}>
+                {post.community_name ? (
+                  <AppText variant="caption" color="primary" style={styles.communityName}>
+                    {post.community_name}
+                  </AppText>
+                ) : null}
+                <AppText variant="caption" color="textMuted">
+                  {formatTimeAgo(post.created_at)}
                 </AppText>
-              ) : null}
-              <AppText variant="caption" color="textMuted">
-                {formatTimeAgo(post.created_at)}
+              </View>
+            </View>
+          </View>
+
+          <AppText variant="title" style={styles.title}>
+            {post.title}
+          </AppText>
+          <AppText variant="body" color="textSecondary" style={styles.content}>
+            {post.content}
+          </AppText>
+
+          {post.image_url ? (
+            <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
+          ) : null}
+
+          <View style={styles.reactionsRow}>
+            <ReactionItem emoji="💜" label="I'm Here" count={post.im_here} />
+            <ReactionItem emoji="🤝" label="Me Too" count={post.me_too} />
+            <ReactionItem emoji="❤️" label="Love This" count={post.love_this} />
+            <View style={styles.reactionItem}>
+              <AppText style={styles.reactionEmoji}>💬</AppText>
+              <AppText variant="caption" color="textSecondary">
+                {post.comments.length}
               </AppText>
             </View>
           </View>
-        </View>
 
-        <AppText variant="title" style={styles.title}>
-          {post.title}
-        </AppText>
-        <AppText variant="body" color="textSecondary" style={styles.content}>
-          {post.content}
-        </AppText>
+          {error ? (
+            <AppText variant="caption" color="error" style={styles.inlineError}>
+              {error}
+            </AppText>
+          ) : null}
 
-        {post.image_url ? (
-          <Image source={{ uri: post.image_url }} style={styles.postImage} resizeMode="cover" />
-        ) : null}
-
-        <View style={styles.reactionsRow}>
-          <ReactionItem emoji="💜" label="I'm Here" count={post.im_here} />
-          <ReactionItem emoji="🤝" label="Me Too" count={post.me_too} />
-          <ReactionItem emoji="❤️" label="Love This" count={post.love_this} />
-          <View style={styles.reactionItem}>
-            <AppText style={styles.reactionEmoji}>💬</AppText>
-            <AppText variant="caption" color="textSecondary">
-              {post.comments.length}
+          <View style={styles.commentsHeader}>
+            <AppText variant="subtitle">
+              {post.comments.length === 1 ? '1 Comment' : `${post.comments.length} Comments`}
             </AppText>
           </View>
-        </View>
 
-        <View style={styles.commentsHeader}>
-          <AppText variant="subtitle">
-            {post.comments.length === 1 ? '1 Comment' : `${post.comments.length} Comments`}
-          </AppText>
-        </View>
+          {post.comments.length === 0 ? (
+            <AppText variant="body" color="textSecondary" style={styles.emptyComments}>
+              No comments yet. Be the first to share your thoughts.
+            </AppText>
+          ) : (
+            post.comments.map((comment) => (
+              <CommentRow
+                key={comment.comment_id}
+                comment={comment}
+                onToggleLike={handleToggleCommentLike}
+                onReply={handleReply}
+                likeLoading={likeLoadingId === comment.comment_id}
+              />
+            ))
+          )}
+        </ScrollView>
 
-        {post.comments.length === 0 ? (
-          <AppText variant="body" color="textSecondary" style={styles.emptyComments}>
-            No comments yet. Be the first to share your thoughts.
-          </AppText>
-        ) : (
-          post.comments.map((comment) => (
-            <CommentRow
-              key={comment.comment_id}
-              comment={comment}
-              onToggleLike={handleToggleCommentLike}
-              likeLoading={likeLoadingId === comment.comment_id}
+        <View style={styles.inputBar}>
+          {replyingTo ? (
+            <View style={styles.replyBanner}>
+              <AppText variant="caption" color="textSecondary" style={styles.replyBannerText}>
+                Replying to {replyingTo.display_name ?? 'Anonymous'}
+              </AppText>
+              <Pressable onPress={handleCancelReply} hitSlop={8}>
+                <Ionicons name="close" size={18} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={styles.inputRow}>
+            <View style={styles.inputAvatar} />
+            <TextInput
+              ref={inputRef}
+              value={commentText}
+              onChangeText={setCommentText}
+              placeholder="Share your thoughts..."
+              placeholderTextColor={theme.colors.textMuted}
+              style={styles.textInput}
+              multiline
+              maxLength={1000}
+              editable={!submitting}
             />
-          ))
-        )}
-      </ScrollView>
+            <Pressable
+              onPress={handleSubmitComment}
+              disabled={!canSubmit}
+              style={[styles.sendButton, !canSubmit && styles.sendButtonDisabled]}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color={theme.colors.white} />
+              ) : (
+                <Ionicons name="send" size={18} color={theme.colors.white} />
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   screenContent: {
     flex: 1,
     paddingHorizontal: 0,
@@ -290,7 +410,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.base,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.base,
   },
   postHeader: {
     flexDirection: 'row',
@@ -357,6 +477,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     textAlign: 'center',
   },
+  inlineError: {
+    marginBottom: theme.spacing.sm,
+  },
   commentsHeader: {
     marginBottom: theme.spacing.md,
   },
@@ -369,6 +492,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: theme.spacing.base,
     gap: theme.spacing.sm,
+  },
+  replyIndent: {
+    marginLeft: theme.spacing.lg,
   },
   commentAvatar: {
     width: 32,
@@ -393,11 +519,70 @@ const styles = StyleSheet.create({
   commentContent: {
     lineHeight: 20,
   },
+  replyButton: {
+    marginTop: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
   commentLikeButton: {
     alignItems: 'center',
     gap: 2,
     paddingTop: 2,
     minWidth: 28,
+  },
+  inputBar: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    paddingHorizontal: theme.spacing.base,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+  },
+  replyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  replyBannerText: {
+    flex: 1,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  inputAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.chipPurpleBg,
+    marginBottom: 6,
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: theme.fontSize.body,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.background,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
   errorText: {
     textAlign: 'center',

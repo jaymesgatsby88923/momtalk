@@ -230,7 +230,7 @@ def get_post_detail(post_id: str, current_user):
                 created_at,
                 user_id,
                 likes,
-                parent_comment,
+                parent_comment_id,
                 Users(display_name)
             )
         """)
@@ -277,7 +277,7 @@ def get_post_detail(post_id: str, current_user):
             "content": c["content"],
             "created_at": c.get("created_at"),
             "user_id": c.get("user_id"),
-            "parent_comment": c.get("parent_comment"),
+            "parent_comment_id": c.get("parent_comment_id"),
             "display_name": (c.pop("Users") or {}).get("display_name"),
             "like_count": c.get("likes") or 0,
             "liked_by_me": c["comment_id"] in liked_comment_ids,

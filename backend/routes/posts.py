@@ -11,9 +11,13 @@ router = APIRouter(
     tags=["Posts"]
 )
 
-@router.post("/comments/{comment_id}/create")
-def create_comment(comment_create_request: CommentCreateRequest, current_user=Depends(get_current_user)):
-    return post_service.create_comment(comment_create_request, current_user)
+@router.post("/{post_id}/comments")
+def create_comment(
+    post_id: str,
+    comment_create_request: CommentCreateRequest,
+    current_user=Depends(get_current_user),
+):
+    return post_service.create_comment(post_id, comment_create_request, current_user)
 
 @router.post("/create")
 def create_post(post_create_request: PostCreateRequest, current_user = Depends(get_current_user)):

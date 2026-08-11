@@ -1,5 +1,10 @@
 import { apiRequest } from './api';
-import { CommentLikeResponse, PostCreateRequest, PostDetail } from '../types/post';
+import {
+  CommentLikeResponse,
+  PostComment,
+  PostCreateRequest,
+  PostDetail,
+} from '../types/post';
 
 export const postService = {
   createPost: (payload: PostCreateRequest) =>
@@ -19,5 +24,14 @@ export const postService = {
   unlikeComment: (commentId: string) =>
     apiRequest<CommentLikeResponse>(`/posts/comments/${commentId}/like`, {
       method: 'DELETE',
+    }),
+
+  createComment: (postId: string, content: string, parentCommentId?: string) =>
+    apiRequest<PostComment>(`/posts/${postId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        content,
+        parent_comment_id: parentCommentId ?? null,
+      }),
     }),
 };

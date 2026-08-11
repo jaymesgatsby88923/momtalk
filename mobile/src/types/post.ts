@@ -16,7 +16,7 @@ export type PostComment = {
   created_at: string;
   user_id: string;
   display_name: string | null;
-  parent_comment: string | null;
+  parent_comment_id: string | null;
   like_count: number;
   liked_by_me: boolean;
 };

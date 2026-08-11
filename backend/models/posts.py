@@ -23,5 +23,5 @@ class  PostReactionRequest(BaseModel):
     reaction: str
 
 class CommentCreateRequest(BaseModel):
-    comment_id: str
-    active: bool
+    content: str
+    parent_comment_id: Optional[str] = None
