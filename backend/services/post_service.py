@@ -5,6 +5,14 @@ from fastapi import Depends, HTTPException
 from datetime import datetime
 
 
+def like_comment(comment_id: str, current_user: dict) -> dict:
+    return set_comment_like(comment_id, active=True, current_user=current_user)
+
+
+def unlike_comment(comment_id: str, current_user: dict) -> dict:
+    return set_comment_like(comment_id, active=False, current_user=current_user)
+
+
 def list_for_you(current_user):
     result = (
         admin_supabase
@@ -81,12 +89,6 @@ def list_popular(current_user):
         post["display_name"] = user["display_name"] if user else None
 
     return posts
-def like_comment(comment_id: str, current_user: dict) -> dict:
-    return set_comment_like(comment_id, active=True, current_user=current_user)
-
-
-def unlike_comment(comment_id: str, current_user: dict) -> dict:
-    return set_comment_like(comment_id, active=False, current_user=current_user)
 
 def list_latest(current_user):
     result = (
