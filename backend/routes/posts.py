@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.security import HTTPBearer
 from services import post_service
-from models.posts import PostCreateRequest, PostReactionRequest   
+from models.posts import PostCreateRequest, PostReactionRequest, CommentCreateRequest   
 from dependencies.dependencies import get_current_user
 
 
@@ -10,6 +10,10 @@ router = APIRouter(
     prefix="/posts",
     tags=["Posts"]
 )
+
+@router.post("/comments/{comment_id}/create")
+def create_comment(comment_create_request: CommentCreateRequest, current_user=Depends(get_current_user)):
+    return post_service.create_comment(comment_create_request, current_user)
 
 @router.post("/create")
 def create_post(post_create_request: PostCreateRequest, current_user = Depends(get_current_user)):

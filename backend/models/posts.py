@@ -21,4 +21,7 @@ class  PostList(BaseModel):
 class  PostReactionRequest(BaseModel):
     post_id: str
     reaction: str
-   
+
+class CommentLikeRequest(BaseModel):
+    comment_id: str
+    active: bool

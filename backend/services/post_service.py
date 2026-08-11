@@ -12,6 +12,73 @@ def like_comment(comment_id: str, current_user: dict) -> dict:
 def unlike_comment(comment_id: str, current_user: dict) -> dict:
     return set_comment_like(comment_id, active=False, current_user=current_user)
 
+def create_comment(
+    post_id: str,
+    request: CommentCreateRequest,
+    current_user: dict,
+) -> dict:
+    content = request.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+
+    # 1. Post must exist
+    post_result = (
+        admin_supabase
+        .table("Posts")
+        .select("post_id")
+        .eq("post_id", post_id)
+        .execute()
+    )
+    if not post_result.data:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    parent_comment_id = request.parent_comment_id
+
+    # 2. If reply, parent must exist on same post
+    if parent_comment_id:
+        parent_result = (
+            admin_supabase
+            .table("Comments")
+            .select("comment_id, post_id")
+            .eq("comment_id", parent_comment_id)
+            .execute()
+        )
+        if not parent_result.data:
+            raise HTTPException(status_code=404, detail="Parent comment not found")
+
+        if parent_result.data[0]["post_id"] != post_id:
+            raise HTTPException(status_code=400, detail="Parent comment is not on this post")
+
+    # 3. Insert
+    insert_result = (
+        admin_supabase
+        .table("Comments")
+        .insert({
+            "post_id": post_id,
+            "user_id": current_user["user_id"],
+            "content": content,
+            "parent_comment_id": parent_comment_id,
+            "likes": 0,
+        })
+        .execute()
+    )
+
+    if not insert_result.data:
+        raise HTTPException(status_code=500, detail="Failed to create comment")
+
+    comment = insert_result.data[0]
+
+    # 4. Return same shape as get_post_detail comments
+    return {
+        "comment_id": comment["comment_id"],
+        "content": comment["content"],
+        "created_at": comment["created_at"],
+        "user_id": comment["user_id"],
+        "parent_comment_id": comment.get("parent_comment_id"),
+        "display_name": current_user.get("display_name"),
+        "like_count": 0,
+        "liked_by_me": False,
+    }
 
 def list_for_you(current_user):
     result = (
