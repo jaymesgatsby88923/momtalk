@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.security import HTTPBearer
-from services import post_service, set_comment_like
+from services.post_service import post_service, set_comment_like
 from models.posts import PostCreateRequest, PostReactionRequest   
 from dependencies.dependencies import get_current_user
 
@@ -37,7 +37,7 @@ def post_reaction(post_reaction_request: PostReactionRequest):
     return post_service.post_reaction(post_reaction_request)
 
 def like_comment(comment_id: str, current_user: dict) -> dict:
-    return set_comment_like(comment_id, active=True, current_user=current_user)
+    return post_service.set_comment_like(comment_id, active=True, current_user=current_user)
 
 def unlike_comment(comment_id: str, current_user: dict) -> dict:
-    return set_comment_like(comment_id, active=False, current_user=current_user)
+    return post_service.set_comment_like(comment_id, active=False, current_user=current_user)
