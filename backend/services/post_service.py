@@ -1,5 +1,6 @@
 from database.supabase import admin_supabase
 from models.posts import PostReactionRequest, PostCreateRequest, CommentCreateRequest
+from services import user_service
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
 from datetime import datetime
@@ -68,14 +69,18 @@ def create_comment(
 
     comment = insert_result.data[0]
 
-    # 4. Return same shape as get_post_detail comments
+    # 4. Return same shape as get_post_detail comments.
+    # Use user_service.get_user so display_name comes from the users domain,
+    # not from the auth dependency (which may only carry user_id later).
+    author = user_service.get_user(current_user["user_id"])
+
     return {
         "comment_id": comment["comment_id"],
         "content": comment["content"],
         "created_at": comment["created_at"],
         "user_id": comment["user_id"],
         "parent_comment_id": comment.get("parent_comment_id"),
-        "display_name": current_user.get("display_name"),
+        "display_name": author["display_name"],
         "like_count": 0,
         "liked_by_me": False,
     }

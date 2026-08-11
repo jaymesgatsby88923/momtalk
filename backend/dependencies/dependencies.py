@@ -27,7 +27,7 @@ def get_current_user(credentials=Depends(security)) -> dict:
         response = (
             user_supabase
             .table("Users")
-            .select("*")
+            .select("user_id,display_name")
             .eq("auth_user_id", auth_user_id)
             .execute()
         )
@@ -44,7 +44,7 @@ def get_current_user(credentials=Depends(security)) -> dict:
     response = (
         admin_supabase
         .table("Users")
-        .select("*")
+        .select("user_id,display_name")
         .eq("auth_user_id", auth_user_id)
         .execute()
     )
