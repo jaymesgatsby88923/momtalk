@@ -87,7 +87,7 @@ def like_comment(comment_id: str, current_user: dict) -> dict:
 
 def unlike_comment(comment_id: str, current_user: dict) -> dict:
     return set_comment_like(comment_id, active=False, current_user=current_user)
-    
+
 def list_latest(current_user):
     result = (
         admin_supabase
@@ -160,12 +160,14 @@ def get_post_detail(post_id: str, current_user):
                 content,
                 created_at,
                 user_id,
+                likes,
+                parent_comment,
                 Users(display_name)
             )
         """)
         .eq("post_id", post_id)
         .order("created_at", foreign_table="Comments", desc=False)
-        .single()
+        .maybe_single()
         .execute()
     )
 
@@ -173,8 +175,47 @@ def get_post_detail(post_id: str, current_user):
         raise HTTPException(status_code=404, detail="Post not found")
 
     post = result.data
-    # flatten Communities / Users like list_for_you does
-    # pull Comments out into post["comments"]
+
+    community = post.pop("Communities", None)
+    post["community_name"] = community["name"] if community else None
+
+    user = post.pop("Users", None)
+    post["display_name"] = user["display_name"] if user else None
+
+    raw_comments = post.pop("Comments", None) or []
+    comment_ids = [c["comment_id"] for c in raw_comments]
+
+    liked_comment_ids = set()
+    if comment_ids:
+        user_id = current_user["user_id"]
+        reaction_result = (
+            admin_supabase
+            .table("User_Reaction")
+            .select("comment_id")
+            .eq("user_id", user_id)
+            .eq("reaction_type", "like")
+            .eq("active", True)
+            .in_("comment_id", comment_ids)
+            .execute()
+        )
+        liked_comment_ids = {
+            r["comment_id"] for r in (reaction_result.data or [])
+        }
+
+    post["comments"] = [
+        {
+            "comment_id": c["comment_id"],
+            "content": c["content"],
+            "created_at": c.get("created_at"),
+            "user_id": c.get("user_id"),
+            "parent_comment": c.get("parent_comment"),
+            "display_name": (c.pop("Users") or {}).get("display_name"),
+            "like_count": c.get("likes") or 0,
+            "liked_by_me": c["comment_id"] in liked_comment_ids,
+        }
+        for c in raw_comments
+    ]
+
     return post
 
 def create_post(post_create_request: PostCreateRequest, current_user):
@@ -200,7 +241,7 @@ def set_comment_like(comment_id: str, active: bool, current_user: dict) -> dict:
     comment_result = (
         admin_supabase
         .table("Comments")
-        .select("comment_id, like")
+        .select("comment_id, likes")
         .eq("comment_id", comment_id)
         .execute()
     )
@@ -208,7 +249,7 @@ def set_comment_like(comment_id: str, active: bool, current_user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Comment not found")
 
     comment = comment_result.data[0]
-    like_count = comment["like"]
+    like_count = comment["likes"]
 
     # 2. Does this user already have a reaction row?
     reaction_result = (
@@ -248,7 +289,7 @@ def set_comment_like(comment_id: str, active: bool, current_user: dict) -> dict:
 
     # 5. Update count on Comments (+1 or -1, never below 0)
     new_count = like_count + 1 if active else max(0, like_count - 1)
-    admin_supabase.table("Comments").update({"like": new_count}).eq(
+    admin_supabase.table("Comments").update({"likes": new_count}).eq(
         "comment_id", comment_id
     ).execute()
 
