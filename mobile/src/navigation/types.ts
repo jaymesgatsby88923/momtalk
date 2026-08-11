@@ -27,7 +27,7 @@ export type MainTabParamList = {
   Home: undefined;
   Communities: undefined;
   Post: undefined;
-  Messages: undefined;
+  Support: undefined;
   Profile: undefined;
 };
 

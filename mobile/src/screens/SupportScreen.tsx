@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { AppText, ScreenContainer } from '../components';
 
-export function MessagesScreen() {
+export function SupportScreen() {
   return (
     <ScreenContainer centered>
-      <AppText variant="title">Messages</AppText>
+      <AppText variant="title">Support</AppText>
     </ScreenContainer>
   );
 }
