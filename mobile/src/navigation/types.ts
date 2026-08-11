@@ -11,6 +11,9 @@ export type CommunitiesStackParamList = {
     communityName?: string;
     isJoined?: boolean;
   };
+  PostDetail: {
+    postId: string;
+  };
 };
 
 export type HomeStackParamList = {

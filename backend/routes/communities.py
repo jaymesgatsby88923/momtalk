@@ -16,7 +16,7 @@ def list_communities(current_user = Depends(get_current_user)):
 
 @router.get("/detail/{community_id}")
 def get_community_detail(community_id: str, current_user = Depends(get_current_user)):
-    return community_service.get_community_detail(community_id, current_user)
+    return community_service.get_community_detail(community_id, current_user["user_id"])
 
 #@router.post("/create")
 #def create_community(community_create_request: CommunityCreateRequest, current_user = Depends(get_current_user)):

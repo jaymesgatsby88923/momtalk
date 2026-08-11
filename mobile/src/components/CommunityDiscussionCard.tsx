@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { AppText } from './AppText';
 import { CommunityPost } from '../types/community';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
@@ -9,18 +9,25 @@ import { theme } from '../theme';
 type CommunityDiscussionCardProps = {
   post: CommunityPost;
   pinned?: boolean;
+  onPress?: () => void;
 };
 
 export function CommunityDiscussionCard({
   post,
   pinned = false,
+  onPress,
 }: CommunityDiscussionCardProps) {
   const likeCount = getLikeCount(post);
   const commentCount = post.comment_count ?? 0;
   const authorName = post.display_name ?? 'Community member';
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [pressed && onPress ? styles.cardPressed : undefined]}
+    >
+      <View style={styles.card}>
       {pinned ? (
         <View style={styles.pinnedBadge}>
           <Ionicons name="pin" size={12} color={theme.colors.primary} />
@@ -74,7 +81,8 @@ export function CommunityDiscussionCard({
         </View>
         <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
       </View>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -85,6 +93,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.base,
     marginBottom: theme.spacing.md,
     ...theme.shadows.soft,
+  },
+  cardPressed: {
+    opacity: 0.92,
   },
   pinnedBadge: {
     flexDirection: 'row',

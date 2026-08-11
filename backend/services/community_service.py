@@ -39,31 +39,52 @@ def list_communities(current_user_id: str):
     return result
 
 def get_community_detail(community_id: str, current_user_id: str):
-
-    community_response = (admin_supabase.table("Communities") 
-        .select("""community_id, 
-                    name, 
-                    description
-                    """) 
-        .eq("community_id", community_id) 
+    community_response = (
+        admin_supabase.table("Communities")
+        .select("community_id, name, description")
+        .eq("community_id", community_id)
         .execute()
-        )   
+    )
+
+    if not community_response.data:
+        raise HTTPException(status_code=404, detail="Community not found")
+
     community = community_response.data[0]
 
-    posts_response = (admin_supabase.table("Posts") 
-        .select("""post_id,
-                    title,
-                    content,
-                    user_id,
-                    community_id""") 
-        .eq("community_id", community_id) 
+    posts_response = (
+        admin_supabase.table("Posts")
+        .select("""
+            post_id,
+            title,
+            content,
+            created_at,
+            user_id,
+            community_id,
+            im_here,
+            me_too,
+            love_this,
+            Comments(count),
+            Users(display_name)
+        """)
+        .eq("community_id", community_id)
+        .order("created_at", desc=True)
         .execute()
-        )
-    posts = posts_response.data
+    )
+
+    posts = []
+    for post in posts_response.data:
+        comments = post.get("Comments") or []
+        post["comment_count"] = comments[0]["count"] if comments else 0
+        post.pop("Comments", None)
+
+        user = post.pop("Users", None)
+        post["display_name"] = user["display_name"] if user else None
+
+        posts.append(post)
 
     return {
         "community": community,
-        "posts": posts
+        "posts": posts,
     }
 
 def join_community(community: Community, current_user_profile: object):

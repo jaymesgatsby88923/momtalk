@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -56,6 +56,7 @@ export function CommunityDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   const icon = getCommunityIcon(name);
   const memberLabel = formatMemberCount(membersCount);
@@ -90,6 +91,20 @@ export function CommunityDetailScreen() {
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedOnce.current) {
+        hasLoadedOnce.current = true;
+        return;
+      }
+      fetchDetail(true);
+    }, [fetchDetail]),
+  );
+
+  const handlePostPress = (postId: string) => {
+    navigation.navigate('PostDetail', { postId });
+  };
 
   const filteredPosts = useMemo(() => {
     let result = [...posts];
@@ -187,7 +202,12 @@ export function CommunityDetailScreen() {
       <FlatList
         data={regularPosts}
         keyExtractor={(item) => item.post_id}
-        renderItem={({ item }) => <CommunityDiscussionCard post={item} />}
+        renderItem={({ item }) => (
+          <CommunityDiscussionCard
+            post={item}
+            onPress={() => handlePostPress(item.post_id)}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -202,7 +222,12 @@ export function CommunityDetailScreen() {
             {pinnedPosts.length > 0 ? (
               <View style={styles.pinnedSection}>
                 {pinnedPosts.map((post) => (
-                  <CommunityDiscussionCard key={post.post_id} post={post} pinned />
+                  <CommunityDiscussionCard
+                    key={post.post_id}
+                    post={post}
+                    pinned
+                    onPress={() => handlePostPress(post.post_id)}
+                  />
                 ))}
               </View>
             ) : null}
