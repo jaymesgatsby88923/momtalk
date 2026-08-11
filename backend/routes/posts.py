@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.security import HTTPBearer
-from services.post_service import post_service, set_comment_like
+from services import post_service
 from models.posts import PostCreateRequest, PostReactionRequest   
 from dependencies.dependencies import get_current_user
 
