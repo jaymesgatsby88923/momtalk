@@ -1,5 +1,5 @@
 from database.supabase import admin_supabase
-from models.posts import PostReactionRequest, PostCreateRequest
+from models.posts import PostReactionRequest, PostCreateRequest, CommentCreateRequest
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
 from datetime import datetime
