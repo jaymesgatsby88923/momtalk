@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CommunitiesStack } from './CommunitiesStack';
-import { HomeScreen } from '../screens/HomeScreen';
+import { HomeStack } from './HomeStack';
 import { MessagesScreen } from '../screens/MessagesScreen';
 import { CreatePostScreen } from '../screens/CreatePostScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -15,7 +15,7 @@ export function MainTabNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Communities" component={CommunitiesStack} />
       <Tab.Screen name="Post" component={CreatePostScreen} />
       <Tab.Screen name="Messages" component={MessagesScreen} />

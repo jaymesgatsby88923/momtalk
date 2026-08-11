@@ -36,8 +36,10 @@ def get_post_detail(post_id: str, current_user = Depends(get_current_user)):
 def post_reaction(post_reaction_request: PostReactionRequest):
     return post_service.post_reaction(post_reaction_request)
 
-def like_comment(comment_id: str, current_user: dict) -> dict:
-    return post_service.set_comment_like(comment_id, active=True, current_user=current_user)
+@router.post("/comments/{comment_id}/like")
+def like_comment(comment_id: str, current_user=Depends(get_current_user)):
+    return post_service.like_comment(comment_id, current_user)
 
-def unlike_comment(comment_id: str, current_user: dict) -> dict:
-    return post_service.set_comment_like(comment_id, active=False, current_user=current_user)
+@router.delete("/comments/{comment_id}/like")
+def unlike_comment(comment_id: str, current_user=Depends(get_current_user)):
+    return post_service.unlike_comment(comment_id, current_user)

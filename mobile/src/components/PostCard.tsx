@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { AppText } from './AppText';
 import { Post } from '../types/post';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
@@ -6,6 +6,7 @@ import { theme } from '../theme';
 
 type PostCardProps = {
   post: Post;
+  onPress?: () => void;
 };
 
 type ReactionItemProps = {
@@ -28,9 +29,14 @@ function ReactionItem({ emoji, label, count }: ReactionItemProps) {
   );
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onPress }: PostCardProps) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [pressed && onPress ? styles.cardPressed : undefined]}
+    >
+      <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.avatar} />
         <View style={styles.headerText}>
@@ -63,7 +69,8 @@ export function PostCard({ post }: PostCardProps) {
           </AppText>
         </View>
       </View>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -74,6 +81,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.base,
     marginBottom: theme.spacing.base,
     ...theme.shadows.soft,
+  },
+  cardPressed: {
+    opacity: 0.92,
   },
   header: {
     flexDirection: 'row',

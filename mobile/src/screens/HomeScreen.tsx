@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 import { AppScreen, AppText, PostCard } from '../components';
 import { useAuth } from '../hooks/useAuth';
+import { HomeStackParamList } from '../navigation/types';
 import { apiRequest, ApiError } from '../services/api';
 import { FeedType, Post } from '../types/post';
 import { theme } from '../theme';
@@ -36,6 +39,7 @@ const feedTabs: FeedTab[] = [
 ];
 
 export function HomeScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'HomeFeed'>>();
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +131,12 @@ export function HomeScreen() {
       <FlatList
         data={posts}
         keyExtractor={(item) => item.post_id}
-        renderItem={({ item }) => <PostCard post={item} />}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onPress={() => navigation.navigate('PostDetail', { postId: item.post_id })}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={

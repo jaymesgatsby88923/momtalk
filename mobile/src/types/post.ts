@@ -10,6 +10,39 @@ export type Post = {
   community_name: string | null;
 };
 
+export type PostComment = {
+  comment_id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  display_name: string | null;
+  parent_comment: string | null;
+  like_count: number;
+  liked_by_me: boolean;
+};
+
+export type PostDetail = {
+  post_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  im_here: number;
+  me_too: number;
+  love_this: number;
+  image_url: string | null;
+  community_id: string | null;
+  community_name: string | null;
+  display_name: string | null;
+  comments: PostComment[];
+};
+
+export type CommentLikeResponse = {
+  comment_id: string;
+  like_count: number;
+  liked_by_me: boolean;
+};
+
 export type FeedType = 'forYou' | 'popular' | 'latest' | 'provideSupport';
 
 /** Matches backend PostCreateRequest in backend/models/posts.py */

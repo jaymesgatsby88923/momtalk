@@ -13,6 +13,13 @@ export type CommunitiesStackParamList = {
   };
 };
 
+export type HomeStackParamList = {
+  HomeFeed: undefined;
+  PostDetail: {
+    postId: string;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Communities: undefined;
@@ -26,6 +33,7 @@ declare global {
     interface RootParamList
       extends AuthStackParamList,
         MainTabParamList,
-        CommunitiesStackParamList {}
+        CommunitiesStackParamList,
+        HomeStackParamList {}
   }
 }
