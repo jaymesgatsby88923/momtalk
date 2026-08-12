@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import { LoginRequest, LoginResponse, SignUpRequest, User } from '../types/auth';
+import { LoginRequest, LoginResponse, SignUpRequest } from '../types/auth';
 
 export const authService = {
   login: (payload: LoginRequest) =>
@@ -13,6 +13,4 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-
-  getCurrentUser: () => apiRequest<User>('/auth/current-user'),
 };
