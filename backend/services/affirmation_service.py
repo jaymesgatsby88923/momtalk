@@ -26,7 +26,7 @@ def get_affirmation_for_user(user_id: str) -> dict:
             .maybe_single()
             .execute()
         )
-        if affirmation_result.data:
+        if affirmation_result and affirmation_result.data:
             return affirmation_result.data
 
     default_result = (
@@ -54,7 +54,7 @@ def save_affirmation(user_id: str, affirmation_id: str) -> dict:
         .execute()
     )
 
-    if not affirmation_result.data:
+    if not affirmation_result or not affirmation_result.data:
         raise HTTPException(status_code=404, detail="Affirmation not found")
 
     update_result = (
