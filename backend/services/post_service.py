@@ -3,7 +3,7 @@ from models.posts import PostReactionRequest, PostCreateRequest, CommentCreateRe
 from services import user_service
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 
 def like_comment(comment_id: str, current_user: dict) -> dict:
@@ -123,7 +123,57 @@ def list_for_you(current_user):
 
     return posts
 
+POPULAR_WINDOW_DAYS = 14
+POPULAR_CANDIDATE_LIMIT = 200
+POPULAR_RETURN_LIMIT = 50
+POPULAR_GRAVITY = 1.5
+
+POPULAR_WEIGHTS = {
+    "im_here": 2,
+    "me_too": 2,
+    "love_this": 1,
+    "comment_count": 4,
+}
+
+
+def _parse_created_at(created_at: str) -> datetime:
+    if created_at.endswith("Z"):
+        created_at = created_at.replace("Z", "+00:00")
+    return datetime.fromisoformat(created_at)
+
+
+def _normalize_feed_post(post: dict) -> dict:
+    comments = post.get("Comments") or []
+    post["comment_count"] = comments[0]["count"] if comments else 0
+    post.pop("Comments", None)
+
+    community = post.pop("Communities", None)
+    post["community_name"] = community["name"] if community else None
+
+    user = post.pop("Users", None)
+    post["display_name"] = user["display_name"] if user else None
+
+    return post
+
+
+def _popular_score(post: dict, now: datetime) -> float:
+    engagement = (
+        POPULAR_WEIGHTS["im_here"] * (post.get("im_here") or 0)
+        + POPULAR_WEIGHTS["me_too"] * (post.get("me_too") or 0)
+        + POPULAR_WEIGHTS["love_this"] * (post.get("love_this") or 0)
+        + POPULAR_WEIGHTS["comment_count"] * (post.get("comment_count") or 0)
+    )
+
+    created_at = _parse_created_at(post["created_at"])
+    age_hours = max((now - created_at).total_seconds() / 3600, 0.5)
+
+    return engagement / ((age_hours + 2) ** POPULAR_GRAVITY)
+
+
 def list_popular(current_user):
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=POPULAR_WINDOW_DAYS)).isoformat()
+
     result = (
         admin_supabase
         .table("Posts")
@@ -141,26 +191,23 @@ def list_popular(current_user):
             Comments(count),
             Users(display_name)
         """)
-        .eq("test_only", "popular")
+        .gte("created_at", cutoff)
+        .order("created_at", desc=True)
+        .limit(POPULAR_CANDIDATE_LIMIT)
         .execute()
     )
 
-    posts = result.data
+    posts = [_normalize_feed_post(post) for post in (result.data or [])]
 
-    # Clean up response — Supabase returns embedded table as "Comments"
-    
-    for post in posts:
-        comments = post.get("Comments") or []
-        post["comment_count"] = comments[0]["count"] if comments else 0
-        post.pop("Comments", None)
+    posts.sort(
+        key=lambda post: (
+            _popular_score(post, now),
+            _parse_created_at(post["created_at"]),
+        ),
+        reverse=True,
+    )
 
-        community = post.pop("Communities", None)
-        post["community_name"] = community["name"] if community else None
-
-        user = post.pop("Users", None)
-        post["display_name"] = user["display_name"] if user else None
-
-    return posts
+    return posts[:POPULAR_RETURN_LIMIT]
 
 def list_latest(current_user):
     result = (
@@ -181,7 +228,7 @@ def list_latest(current_user):
             Comments(count),
             Users(display_name)
         """)
-        .eq("test_only", "latest")
+        .order("created_at", desc=True)
         .execute()
     )
 

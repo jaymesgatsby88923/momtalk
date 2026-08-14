@@ -23,11 +23,19 @@ export type HomeStackParamList = {
   };
 };
 
+export type RestoreStackParamList = {
+  RestoreHome: undefined;
+  RestoreJournal: undefined;
+  JournalEntryDetail: {
+    journalEntryId: string;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Communities: undefined;
   Post: undefined;
-  Support: undefined;
+  Restore: undefined;
   Profile: undefined;
 };
 
@@ -37,6 +45,7 @@ declare global {
       extends AuthStackParamList,
         MainTabParamList,
         CommunitiesStackParamList,
-        HomeStackParamList {}
+        HomeStackParamList,
+        RestoreStackParamList {}
   }
 }

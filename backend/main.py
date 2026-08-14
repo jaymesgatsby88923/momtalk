@@ -4,6 +4,7 @@ from routes.auth import router as auth_router
 from routes.posts import router as posts_router
 from routes.communities import router as communities_router
 from routes.users import router as users_router
+from routes.restore import router as restore_router
 from dotenv import load_dotenv
 import os
 
@@ -30,3 +31,4 @@ app.include_router(auth_router)
 app.include_router(posts_router)
 app.include_router(communities_router)
 app.include_router(users_router)
+app.include_router(restore_router)

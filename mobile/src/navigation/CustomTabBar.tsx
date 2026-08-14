@@ -14,7 +14,7 @@ const TAB_CONFIG: Record<
   Home: { icon: 'home-outline', activeIcon: 'home', label: 'Home' },
   Communities: { icon: 'people-outline', activeIcon: 'people', label: 'Communities' },
   Post: { icon: 'create-outline', activeIcon: 'create', label: 'Post' },
-  Support: { icon: 'heart-outline', activeIcon: 'heart', label: 'Support' },
+  Restore: { icon: 'cafe-outline', activeIcon: 'cafe', label: 'Restore' },
   Profile: { icon: 'person-outline', activeIcon: 'person', label: 'Profile' },
 };
 

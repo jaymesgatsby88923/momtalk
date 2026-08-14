@@ -1,0 +1,69 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 table_name,column_name,data_type,udt_name,is_nullable,column_default,key_type\
+Affirmations,affirmation_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Affirmations,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Affirmations,message,text,text,YES,null,\
+Child,child_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Child,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Child,stage,character varying,varchar,YES,null,\
+Child,active,boolean,bool,YES,true,\
+Child,due_date,timestamp with time zone,timestamptz,YES,null,\
+Child,gender,character varying,varchar,YES,null,\
+Child,user_id,uuid,uuid,YES,null,\
+Child,birth_date,timestamp with time zone,timestamptz,YES,null,\
+Comments,comment_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Comments,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Comments,post_id,uuid,uuid,YES,null,\
+Comments,parent_comment_id,uuid,uuid,YES,null,\
+Comments,likes,integer,int4,YES,null,\
+Comments,user_id,uuid,uuid,YES,null,\
+Comments,content,text,text,YES,null,\
+Comments,active,boolean,bool,YES,null,\
+Communities,community_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Communities,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Communities,creator_id,uuid,uuid,YES,gen_random_uuid(),\
+Communities,name,text,text,YES,null,\
+Communities,admin,uuid,uuid,YES,gen_random_uuid(),\
+Communities,description,text,text,YES,null,\
+Communities,active,boolean,bool,YES,true,\
+Posts,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Posts,user_id,uuid,uuid,YES,null,\
+Posts,im_here,bigint,int8,YES,'0'::bigint,\
+Posts,me_too,bigint,int8,YES,'0'::bigint,\
+Posts,love_this,bigint,int8,YES,'0'::bigint,\
+Posts,post_type,text,text,YES,null,\
+Posts,photo,text,text,YES,null,\
+Posts,post_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Posts,title,text,text,YES,null,\
+Posts,content,text,text,YES,null,\
+Posts,image_url,text,text,YES,null,\
+Posts,post_category,text,text,YES,null,\
+Posts,test_only,text,text,YES,null,\
+Posts,community_id,uuid,uuid,YES,null,\
+User_Community,user_community_id,uuid,uuid,NO,gen_random_uuid(),PK\
+User_Community,created_at,timestamp with time zone,timestamptz,NO,now(),\
+User_Community,user_id,uuid,uuid,YES,null,\
+User_Community,community_id,uuid,uuid,YES,gen_random_uuid(),\
+User_Community,active,boolean,bool,YES,true,\
+User_Reaction,reaction_id,uuid,uuid,NO,gen_random_uuid(),PK\
+User_Reaction,created_at,timestamp with time zone,timestamptz,NO,now(),\
+User_Reaction,user_id,uuid,uuid,YES,null,\
+User_Reaction,post_id,uuid,uuid,YES,null,\
+User_Reaction,comment_id,uuid,uuid,YES,null,\
+User_Reaction,reaction_type,text,text,YES,null,\
+User_Reaction,active,boolean,bool,YES,null,\
+Users,user_id,uuid,uuid,NO,gen_random_uuid(),PK\
+Users,created_at,timestamp with time zone,timestamptz,NO,now(),\
+Users,email,character varying,varchar,YES,null,\
+Users,display_name,character varying,varchar,YES,null,\
+Users,last_active,character varying,varchar,YES,null,\
+Users,auth_user_id,uuid,uuid,YES,null,\
+Users,parent_type,text,text,YES,null,\
+Users,first_name,text,text,YES,null,\
+Users,affirmation_1,uuid,uuid,YES,null,}
