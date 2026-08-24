@@ -472,6 +472,6 @@ const styles = StyleSheet.create({
  * 5. Unexpected server errors (500+)
  *    Detected when authService throws ApiError with status >= 500.
  *
- * access_token persistence:
- * useAuth().login() stores the token in AsyncStorage via setStoredToken().
+ * Token persistence:
+ * useAuth().login() stores access + refresh tokens via authToken.set().
  */

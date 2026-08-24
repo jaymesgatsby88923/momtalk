@@ -9,9 +9,9 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  clearStoredToken,
-  getStoredToken,
-  setStoredToken,
+  authToken,
+  setOnSessionInvalid,
+  tryRefreshSession,
 } from '../services/api';
 import { authService } from '../services/authService';
 import { LoginRequest, LoginResponse } from '../types/auth';
@@ -35,10 +35,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const clearSession = useCallback(async () => {
+    await authToken.clear();
+    setToken(null);
+    queryClient.clear();
+  }, [queryClient]);
+
   useEffect(() => {
     async function restoreSession() {
       try {
-        const storedToken = await getStoredToken();
+        let storedToken = await authToken.get();
+        if (!storedToken) {
+          const refreshed = await tryRefreshSession();
+          storedToken = refreshed ? await authToken.get() : null;
+        }
         setToken(storedToken);
       } finally {
         setIsLoading(false);
@@ -48,10 +58,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     restoreSession();
   }, []);
 
+  useEffect(() => {
+    setOnSessionInvalid(() => {
+      setToken(null);
+      queryClient.clear();
+    });
+
+    return () => setOnSessionInvalid(null);
+  }, [queryClient]);
+
   const login = useCallback(
     async (payload: LoginRequest) => {
       const response = await authService.login(payload);
-      await setStoredToken(response.access_token);
+      await authToken.set(response.access_token, response.refresh_token);
       setToken(response.access_token);
       await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       return response;
@@ -60,10 +79,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const logout = useCallback(async () => {
-    await clearStoredToken();
-    setToken(null);
-    queryClient.clear();
-  }, [queryClient]);
+    const refreshToken = await authToken.getRefresh();
+    const accessToken = await authToken.get();
+    if (refreshToken) {
+      try {
+        await authService.logout(refreshToken, accessToken);
+      } catch {
+        // Local logout still happens if revoke fails.
+      }
+    }
+    await clearSession();
+  }, [clearSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

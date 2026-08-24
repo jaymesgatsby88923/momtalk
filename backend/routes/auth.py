@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.security import HTTPBearer
 from services import auth_service, user_service
-from models.auth import LoginRequest, SignUpRequest
+from models.auth import LoginRequest, LogoutRequest, RefreshRequest, SignUpRequest
 from dependencies.dependencies import get_current_user
 
 
@@ -20,6 +20,16 @@ def login(login_request: LoginRequest):
 @router.post("/signup")
 def signup(signup_request: SignUpRequest):
     return auth_service.signup(signup_request)
+
+
+@router.post("/refresh")
+def refresh(body: RefreshRequest):
+    return auth_service.refresh(body)
+
+
+@router.post("/logout")
+def logout(body: LogoutRequest):
+    return auth_service.logout(body)
 
 @router.get("/current-user")
 def current_user(current_user=Depends(get_current_user)):
