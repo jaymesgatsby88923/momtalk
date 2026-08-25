@@ -1,9 +1,10 @@
 from database.supabase import admin_supabase
 from models.posts import PostReactionRequest, PostCreateRequest, CommentCreateRequest
 from services import user_service
-from fastapi.security import HTTPBearer
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from datetime import datetime, timedelta, timezone
+
+REACTION_TYPES = ("im_here", "me_too", "you_got_this", "love_this")
 
 
 def like_comment(comment_id: str, current_user: dict) -> dict:
@@ -97,6 +98,7 @@ def list_for_you(current_user):
             user_id,
             im_here,
             me_too,
+            you_got_this,
             love_this,
             community_id,
             Communities(name),
@@ -107,21 +109,8 @@ def list_for_you(current_user):
         .execute()
     )
 
-    posts = result.data
-
-    # Clean up response — Supabase returns embedded table as "Comments"
-    for post in posts:
-        comments = post.get("Comments") or []
-        post["comment_count"] = comments[0]["count"] if comments else 0
-        post.pop("Comments", None)
-
-        community = post.pop("Communities", None)
-        post["community_name"] = community["name"] if community else None
-
-        user = post.pop("Users", None)
-        post["display_name"] = user["display_name"] if user else None
-
-    return posts
+    posts = [_normalize_feed_post(post) for post in (result.data or [])]
+    return attach_my_reactions(posts, current_user["user_id"])
 
 POPULAR_WINDOW_DAYS = 14
 POPULAR_CANDIDATE_LIMIT = 200
@@ -131,6 +120,7 @@ POPULAR_GRAVITY = 1.5
 POPULAR_WEIGHTS = {
     "im_here": 2,
     "me_too": 2,
+    "you_got_this": 2,
     "love_this": 1,
     "comment_count": 4,
 }
@@ -153,13 +143,50 @@ def _normalize_feed_post(post: dict) -> dict:
     user = post.pop("Users", None)
     post["display_name"] = user["display_name"] if user else None
 
+    for key in REACTION_TYPES:
+        post[key] = post.get(key) or 0
+
+    post["my_reaction"] = None
     return post
+
+
+def attach_my_reactions(posts: list[dict], user_id: str) -> list[dict]:
+    for post in posts:
+        post["my_reaction"] = None
+        for key in REACTION_TYPES:
+            post[key] = post.get(key) or 0
+
+    post_ids = [post["post_id"] for post in posts if post.get("post_id")]
+    if not post_ids or not user_id:
+        return posts
+
+    result = (
+        admin_supabase
+        .table("User_Reaction")
+        .select("post_id, reaction_type")
+        .eq("user_id", user_id)
+        .eq("active", True)
+        .in_("post_id", post_ids)
+        .execute()
+    )
+
+    by_post = {
+        row["post_id"]: row["reaction_type"]
+        for row in (result.data or [])
+        if row.get("post_id") and row.get("reaction_type") in REACTION_TYPES
+    }
+
+    for post in posts:
+        post["my_reaction"] = by_post.get(post["post_id"])
+
+    return posts
 
 
 def _popular_score(post: dict, now: datetime) -> float:
     engagement = (
         POPULAR_WEIGHTS["im_here"] * (post.get("im_here") or 0)
         + POPULAR_WEIGHTS["me_too"] * (post.get("me_too") or 0)
+        + POPULAR_WEIGHTS["you_got_this"] * (post.get("you_got_this") or 0)
         + POPULAR_WEIGHTS["love_this"] * (post.get("love_this") or 0)
         + POPULAR_WEIGHTS["comment_count"] * (post.get("comment_count") or 0)
     )
@@ -185,6 +212,7 @@ def list_popular(current_user):
             user_id,
             im_here,
             me_too,
+            you_got_this,
             love_this,
             community_id,
             Communities(name),
@@ -207,7 +235,7 @@ def list_popular(current_user):
         reverse=True,
     )
 
-    return posts[:POPULAR_RETURN_LIMIT]
+    return attach_my_reactions(posts[:POPULAR_RETURN_LIMIT], current_user["user_id"])
 
 def list_latest(current_user):
     result = (
@@ -221,6 +249,7 @@ def list_latest(current_user):
             user_id,
             im_here,
             me_too,
+            you_got_this,
             love_this,
             image_url,
             community_id,
@@ -232,32 +261,88 @@ def list_latest(current_user):
         .execute()
     )
 
-    posts = result.data
+    posts = [_normalize_feed_post(post) for post in (result.data or [])]
+    return attach_my_reactions(posts, current_user["user_id"])
 
-    for post in posts:
-        comments = post.get("Comments") or []
-        post["comment_count"] = comments[0]["count"] if comments else 0
-        post.pop("Comments", None)
 
-        community = post.pop("Communities", None)
-        post["community_name"] = community["name"] if community else None
+def _reaction_counts(post: dict) -> dict:
+    return {key: post.get(key) or 0 for key in REACTION_TYPES}
 
-        user = post.pop("Users", None)
-        post["display_name"] = user["display_name"] if user else None
 
-    return posts
+def _reaction_payload(post_id: str, counts: dict, my_reaction: str | None) -> dict:
+    return {
+        "post_id": post_id,
+        **counts,
+        "my_reaction": my_reaction,
+    }
 
-def post_reaction(post_reaction_request: PostReactionRequest):
-    result = (
+
+def post_reaction(post_id: str, request: PostReactionRequest, current_user: dict) -> dict:
+    reaction = request.reaction
+    user_id = current_user["user_id"]
+
+    post_result = (
         admin_supabase
         .table("Posts")
-        .update({
-            "post_id": post_reaction_request.post_id,
-             post_reaction_request.reaction.replace("post-", "_"): post_reaction_request.reaction + 1 ,
-        })
+        .select("post_id, im_here, me_too, you_got_this, love_this")
+        .eq("post_id", post_id)
         .execute()
-    ) 
-    return result.data
+    )
+    if not post_result.data:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    counts = _reaction_counts(post_result.data[0])
+
+    existing_result = (
+        admin_supabase
+        .table("User_Reaction")
+        .select("reaction_id, reaction_type, active")
+        .eq("user_id", user_id)
+        .eq("post_id", post_id)
+        .execute()
+    )
+    existing = existing_result.data[0] if existing_result.data else None
+    current_type = (
+        existing["reaction_type"]
+        if existing and existing.get("active") and existing.get("reaction_type") in REACTION_TYPES
+        else None
+    )
+
+    if current_type == reaction:
+        admin_supabase.table("User_Reaction").update({"active": False}).eq(
+            "reaction_id", existing["reaction_id"]
+        ).execute()
+        counts[reaction] = max(0, counts[reaction] - 1)
+        admin_supabase.table("Posts").update({reaction: counts[reaction]}).eq(
+            "post_id", post_id
+        ).execute()
+        return _reaction_payload(post_id, counts, None)
+
+    if existing:
+        admin_supabase.table("User_Reaction").update({
+            "reaction_type": reaction,
+            "active": True,
+        }).eq("reaction_id", existing["reaction_id"]).execute()
+    else:
+        admin_supabase.table("User_Reaction").insert({
+            "user_id": user_id,
+            "post_id": post_id,
+            "comment_id": None,
+            "reaction_type": reaction,
+            "active": True,
+        }).execute()
+
+    if current_type:
+        counts[current_type] = max(0, counts[current_type] - 1)
+
+    counts[reaction] = counts[reaction] + 1
+
+    counter_update = {reaction: counts[reaction]}
+    if current_type:
+        counter_update[current_type] = counts[current_type]
+
+    admin_supabase.table("Posts").update(counter_update).eq("post_id", post_id).execute()
+    return _reaction_payload(post_id, counts, reaction)
 
 def get_post_detail(post_id: str, current_user):
     result = (
@@ -271,6 +356,7 @@ def get_post_detail(post_id: str, current_user):
             user_id,
             im_here,
             me_too,
+            you_got_this,
             love_this,
             image_url,
             community_id,
@@ -337,6 +423,7 @@ def get_post_detail(post_id: str, current_user):
         for c in raw_comments
     ]
 
+    attach_my_reactions([post], current_user["user_id"])
     return post
 
 def create_post(post_create_request: PostCreateRequest, current_user):

@@ -1,8 +1,11 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import date
+from pydantic import BaseModel
+from typing import Literal, Optional
 
-class PostCreateRequest(BaseModel): 
+
+ReactionType = Literal["im_here", "me_too", "you_got_this", "love_this"]
+
+
+class PostCreateRequest(BaseModel):
     title: str
     content: str
     image_url: Optional[str] = None
@@ -10,17 +13,29 @@ class PostCreateRequest(BaseModel):
     post_category: str
     user_id: str
 
-class  PostList(BaseModel):
-        title: str
-        content: str
-        post_type: str
-        post_category: str
-        user_id: str
-        test_only: str
-        comment_count: int
-class  PostReactionRequest(BaseModel):
+
+class PostList(BaseModel):
+    title: str
+    content: str
+    post_type: str
+    post_category: str
+    user_id: str
+    test_only: str
+    comment_count: int
+
+
+class PostReactionRequest(BaseModel):
+    reaction: ReactionType
+
+
+class PostReactionResponse(BaseModel):
     post_id: str
-    reaction: str
+    im_here: int
+    me_too: int
+    you_got_this: int
+    love_this: int
+    my_reaction: Optional[ReactionType] = None
+
 
 class CommentCreateRequest(BaseModel):
     content: str

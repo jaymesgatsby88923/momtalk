@@ -2,7 +2,7 @@ from database.supabase import admin_supabase
 from models.communities import Community
 from fastapi.security import HTTPBearer
 from fastapi import Depends, HTTPException
-from datetime import datetime
+from services import post_service
 
 
 
@@ -62,6 +62,7 @@ def get_community_detail(community_id: str, current_user_id: str):
             community_id,
             im_here,
             me_too,
+            you_got_this,
             love_this,
             Comments(count),
             Users(display_name)
@@ -72,7 +73,7 @@ def get_community_detail(community_id: str, current_user_id: str):
     )
 
     posts = []
-    for post in posts_response.data:
+    for post in posts_response.data or []:
         comments = post.get("Comments") or []
         post["comment_count"] = comments[0]["count"] if comments else 0
         post.pop("Comments", None)
@@ -81,6 +82,8 @@ def get_community_detail(community_id: str, current_user_id: str):
         post["display_name"] = user["display_name"] if user else None
 
         posts.append(post)
+
+    post_service.attach_my_reactions(posts, current_user_id)
 
     return {
         "community": community,

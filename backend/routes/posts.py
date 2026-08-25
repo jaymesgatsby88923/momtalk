@@ -40,9 +40,13 @@ def list_latest_posts(current_user = Depends(get_current_user)):
 def get_post_detail(post_id: str, current_user = Depends(get_current_user)):
     return post_service.get_post_detail(post_id, current_user)
 
-@router.post("/post-reaction")
-def post_reaction(post_reaction_request: PostReactionRequest):
-    return post_service.post_reaction(post_reaction_request)
+@router.post("/{post_id}/reaction")
+def post_reaction(
+    post_id: str,
+    post_reaction_request: PostReactionRequest,
+    current_user=Depends(get_current_user),
+):
+    return post_service.post_reaction(post_id, post_reaction_request, current_user)
 
 @router.post("/comments/{comment_id}/like")
 def like_comment(comment_id: str, current_user=Depends(get_current_user)):
