@@ -71,5 +71,5 @@ export type PostCreateRequest = {
   image_url?: string;
   post_type: string;
   post_category: string;
-  user_id: string;
+  community_id?: string | null;
 };

@@ -1,5 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import {
+  CompositeNavigationProp,
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,7 +21,7 @@ import {
   View,
 } from 'react-native';
 import { AppScreen, AppText, PostCard } from '../components';
-import { CommunitiesStackParamList } from '../navigation/types';
+import { CommunitiesStackParamList, MainTabParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
 import { communityService } from '../services/communityService';
 import { postService } from '../services/postService';
@@ -29,9 +36,9 @@ import {
 import { mergeReactionResponse, previewReaction } from '../utils/postReactions';
 
 type DetailRouteProp = RouteProp<CommunitiesStackParamList, 'CommunityDetail'>;
-type NavigationProp = NativeStackNavigationProp<
-  CommunitiesStackParamList,
-  'CommunityDetail'
+type NavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<CommunitiesStackParamList, 'CommunityDetail'>,
+  BottomTabNavigationProp<MainTabParamList>
 >;
 
 type DetailTab = 'discussions' | 'about';
@@ -189,10 +196,16 @@ export function CommunityDetailScreen() {
   };
 
   const handleNewPostPress = () => {
-    Alert.alert(
-      'Coming soon',
-      'Creating posts inside a community will work once the backend accepts community_id.',
-    );
+    if (!isJoined) {
+      Alert.alert('Join this community', 'Join this community before posting here.');
+      return;
+    }
+
+    navigation.navigate('Post', {
+      communityId,
+      communityName: name,
+      openedAt: Date.now(),
+    });
   };
 
   const handleFiltersPress = () => {

@@ -40,6 +40,7 @@ export function AppScreen({
 }: AppScreenProps) {
   const contentStyles = [
     styles.content,
+    !scroll && styles.fill,
     centered && styles.centered,
     contentStyle,
   ];
@@ -83,14 +84,16 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
   },
   logo: {
-    width: 120,
-    height: 32,
+    width: 360,
+    height: 96,
     marginBottom: theme.spacing.sm,
   },
   content: {
-    flex: 1,
     paddingHorizontal: theme.spacing.base,
     paddingVertical: theme.spacing.base,
+  },
+  fill: {
+    flex: 1,
   },
   centered: {
     alignItems: 'center',

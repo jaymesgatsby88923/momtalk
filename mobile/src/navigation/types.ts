@@ -1,3 +1,5 @@
+import { NavigatorScreenParams } from '@react-navigation/native';
+
 export type AuthStackParamList = {
   Login: undefined;
   Signup: undefined;
@@ -33,8 +35,14 @@ export type RestoreStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Communities: undefined;
-  Post: undefined;
+  Communities: NavigatorScreenParams<CommunitiesStackParamList> | undefined;
+  Post:
+    | {
+        communityId?: string;
+        communityName?: string;
+        openedAt?: number;
+      }
+    | undefined;
   Restore: undefined;
   Profile: undefined;
 };

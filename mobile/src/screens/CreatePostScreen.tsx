@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,12 +14,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppScreen, AppText, PrimaryButton } from '../components';
 import { PostTypeCard, PostTypeOption } from '../components/PostTypeCard';
+import { MainTabParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
+import { communityService } from '../services/communityService';
 import { postService } from '../services/postService';
+import { Community } from '../types/community';
 import { PostCreateRequest } from '../types/post';
 import { theme } from '../theme';
+import { getCommunityIcon } from '../utils/communityHelpers';
 
 const CONTENT_MAX = 1000;
 
@@ -75,20 +83,94 @@ const INITIAL_FORM: PostCreateRequest = {
   image_url: undefined,
   post_type: '',
   post_category: '',
-  user_id: 'temp-user-id',
+  community_id: undefined,
 };
+
+type NavigationProp = BottomTabNavigationProp<MainTabParamList, 'Post'>;
+type ScreenRouteProp = RouteProp<MainTabParamList, 'Post'>;
 
 /**
  * CreatePostScreen — 2-step create-post flow in a single component.
- * Step 1: pick post type. Step 2: title, content, optional photo UI, submit.
+ * Step 1: pick post type. Step 2: title, content, optional community, submit.
  */
 export function CreatePostScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<ScreenRouteProp>();
+  const lastOpenedAt = useRef<number | undefined>(undefined);
+  const originCommunityId = useRef<string | undefined>(undefined);
+  const originCommunityName = useRef<string | undefined>(undefined);
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<PostCreateRequest>(INITIAL_FORM);
   const [selectedOption, setSelectedOption] = useState<PostTypeOption | null>(null);
+  const [selectedCommunityName, setSelectedCommunityName] = useState<string | null>(null);
+  const [communityLocked, setCommunityLocked] = useState(false);
+  const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
+  const [pickerVisible, setPickerVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const loadJoinedCommunities = useCallback(async () => {
+    try {
+      const data = await communityService.listCommunities();
+      setJoinedCommunities(data.filter((community) => community.is_joined));
+    } catch {
+      setJoinedCommunities([]);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadJoinedCommunities();
+
+      const openedAt = route.params?.openedAt;
+      const communityId = route.params?.communityId;
+      if (!openedAt || openedAt === lastOpenedAt.current || !communityId) {
+        return;
+      }
+
+      lastOpenedAt.current = openedAt;
+      originCommunityId.current = communityId;
+      originCommunityName.current = route.params?.communityName;
+      setForm((prev) => ({ ...prev, community_id: communityId }));
+      setSelectedCommunityName(route.params?.communityName ?? 'Community');
+      setCommunityLocked(true);
+    }, [loadJoinedCommunities, route.params]),
+  );
+
+  const resetComposer = () => {
+    setForm(INITIAL_FORM);
+    setSelectedOption(null);
+    setCurrentStep(1);
+    setSelectedCommunityName(null);
+    setCommunityLocked(false);
+    originCommunityId.current = undefined;
+    originCommunityName.current = undefined;
+  };
+
+  const goToCommunity = (communityId: string, communityName?: string | null) => {
+    navigation.navigate('Communities', {
+      screen: 'CommunityDetail',
+      params: {
+        communityId,
+        communityName: communityName ?? undefined,
+        isJoined: true,
+      },
+    });
+  };
+
+  const leaveComposer = (postedCommunityId?: string | null, postedCommunityName?: string | null) => {
+    const destinationId = postedCommunityId || originCommunityId.current;
+    const destinationName = postedCommunityName || originCommunityName.current;
+
+    resetComposer();
+
+    if (destinationId) {
+      goToCommunity(destinationId, destinationName);
+      return;
+    }
+
+    navigation.navigate('Home');
+  };
 
   /** Step 1 — store post_type/post_category and advance to the form. */
   const handleSelectPostType = (option: PostTypeOption) => {
@@ -103,7 +185,7 @@ export function CreatePostScreen() {
 
   /** Header close on step 1 — leave the create flow. */
   const handleClose = () => {
-    navigation.navigate('Home' as never);
+    leaveComposer();
   };
 
   /** Header back on step 2 — return to type selection without losing typed text. */
@@ -116,6 +198,24 @@ export function CreatePostScreen() {
     setCurrentStep(1);
   };
 
+  const handleClearCommunity = () => {
+    if (communityLocked) {
+      return;
+    }
+    setForm((prev) => ({ ...prev, community_id: undefined }));
+    setSelectedCommunityName(null);
+  };
+
+  const handleSelectCommunity = (community: Community | null) => {
+    if (community) {
+      setForm((prev) => ({ ...prev, community_id: community.community_id }));
+      setSelectedCommunityName(community.name);
+    } else {
+      handleClearCommunity();
+    }
+    setPickerVisible(false);
+  };
+
   const canContinue = form.title.trim().length > 0 && form.content.trim().length > 0;
 
   /** Submit POST /posts/create with the form payload. */
@@ -126,17 +226,17 @@ export function CreatePostScreen() {
 
     setSubmitting(true);
     try {
+      const communityId = form.community_id || undefined;
       await postService.createPost({
-        ...form,
         title: form.title.trim(),
         content: form.content.trim(),
+        post_type: form.post_type,
+        post_category: form.post_category,
+        ...(communityId ? { community_id: communityId } : {}),
       });
 
       Alert.alert('Post created', 'Your post was shared successfully.');
-      setForm(INITIAL_FORM);
-      setSelectedOption(null);
-      setCurrentStep(1);
-      navigation.navigate('Home' as never);
+      leaveComposer(communityId, selectedCommunityName);
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
@@ -145,6 +245,11 @@ export function CreatePostScreen() {
       setSubmitting(false);
     }
   };
+
+  const communityLabel = selectedCommunityName ?? 'Home feed';
+  const communityIcon = selectedCommunityName
+    ? getCommunityIcon(selectedCommunityName)
+    : null;
 
   return (
     <AppScreen showLogo={false} edges={['top', 'bottom']} contentStyle={styles.screenContent}>
@@ -227,6 +332,58 @@ export function CreatePostScreen() {
                 </View>
               ) : null}
 
+              <AppText variant="caption" color="textSecondary" style={styles.fieldLabel}>
+                Community
+              </AppText>
+              {joinedCommunities.length === 0 && !communityLocked ? (
+                <Pressable
+                  onPress={() => navigation.navigate('Communities')}
+                  style={styles.communityRow}
+                >
+                  <AppText variant="body" color="textSecondary" style={styles.communityRowLabel}>
+                    Join a community to share there
+                  </AppText>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={() => {
+                    if (!communityLocked) {
+                      setPickerVisible(true);
+                    }
+                  }}
+                  disabled={communityLocked}
+                  style={[styles.communityRow, communityLocked && styles.communityRowLocked]}
+                >
+                  {communityIcon ? (
+                    <View
+                      style={[
+                        styles.communityIconWrap,
+                        { backgroundColor: communityIcon.backgroundColor },
+                      ]}
+                    >
+                      <Ionicons
+                        name={communityIcon.name}
+                        size={16}
+                        color={communityIcon.color}
+                      />
+                    </View>
+                  ) : (
+                    <Ionicons name="home-outline" size={18} color={theme.colors.textSecondary} />
+                  )}
+                  <AppText variant="body" style={styles.communityRowLabel}>
+                    {communityLabel}
+                  </AppText>
+                  {communityLocked ? null : selectedCommunityName ? (
+                    <Pressable onPress={handleClearCommunity} hitSlop={8}>
+                      <Ionicons name="close-circle" size={20} color={theme.colors.textMuted} />
+                    </Pressable>
+                  ) : (
+                    <Ionicons name="chevron-down" size={18} color={theme.colors.textMuted} />
+                  )}
+                </Pressable>
+              )}
+
               <AppText variant="subtitle" style={styles.sectionLabel}>
                 What&apos;s happening?
               </AppText>
@@ -295,6 +452,72 @@ export function CreatePostScreen() {
           </View>
         ) : null}
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPickerVisible(false)}
+      >
+        <SafeAreaView style={styles.pickerSafeArea} edges={['top', 'bottom']}>
+          <View style={styles.pickerHeader}>
+            <AppText variant="subtitle">Post to</AppText>
+            <Pressable onPress={() => setPickerVisible(false)} hitSlop={8}>
+              <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+            </Pressable>
+          </View>
+          <FlatList
+            data={joinedCommunities}
+            keyExtractor={(item) => item.community_id}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <Pressable
+                onPress={() => handleSelectCommunity(null)}
+                style={styles.pickerRow}
+              >
+                <View style={styles.pickerHomeIcon}>
+                  <Ionicons name="home-outline" size={20} color={theme.colors.primary} />
+                </View>
+                <View style={styles.pickerRowText}>
+                  <AppText variant="body" style={styles.pickerRowTitle}>
+                    None (Home feed)
+                  </AppText>
+                  <AppText variant="caption" color="textSecondary">
+                    Share with everyone on Home
+                  </AppText>
+                </View>
+                {!form.community_id ? (
+                  <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                ) : null}
+              </Pressable>
+            }
+            renderItem={({ item }) => {
+              const icon = getCommunityIcon(item.name);
+              const selected = form.community_id === item.community_id;
+              return (
+                <Pressable onPress={() => handleSelectCommunity(item)} style={styles.pickerRow}>
+                  <View style={[styles.pickerHomeIcon, { backgroundColor: icon.backgroundColor }]}>
+                    <Ionicons name={icon.name} size={20} color={icon.color} />
+                  </View>
+                  <View style={styles.pickerRowText}>
+                    <AppText variant="body" style={styles.pickerRowTitle}>
+                      {item.name}
+                    </AppText>
+                    {item.description ? (
+                      <AppText variant="caption" color="textSecondary" numberOfLines={1}>
+                        {item.description}
+                      </AppText>
+                    ) : null}
+                  </View>
+                  {selected ? (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                  ) : null}
+                </Pressable>
+              );
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
     </AppScreen>
   );
 }
@@ -380,6 +603,33 @@ const styles = StyleSheet.create({
   fieldLabel: {
     marginBottom: theme.spacing.xs,
   },
+  communityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.base,
+  },
+  communityRowLocked: {
+    backgroundColor: theme.colors.chipPurpleBg,
+    borderColor: theme.colors.chipPurpleBg,
+  },
+  communityIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  communityRowLabel: {
+    flex: 1,
+    fontWeight: theme.fontWeight.medium,
+  },
   titleInput: {
     backgroundColor: theme.colors.card,
     borderWidth: 1,
@@ -441,5 +691,43 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
+  },
+  pickerSafeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.base,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  pickerHomeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.chipPurpleBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  pickerRowTitle: {
+    fontWeight: theme.fontWeight.semibold,
   },
 });
