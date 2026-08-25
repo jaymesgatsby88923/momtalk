@@ -18,7 +18,6 @@ export const colors = {
   reactionYouGotThis: '#5B8A66',
   reactionLoveThis: '#9F2D4A',
   reactionLove: '#8B5CF6',
-  reactionMeToo: '#3B82F6',
   reactionSupport: '#22C55E',
   reactionCelebrate: '#F59E0B',
   border: '#E5E7EB',

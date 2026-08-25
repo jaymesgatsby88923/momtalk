@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import { LoginRequest, LoginResponse, SignUpRequest } from '../types/auth';
+import { LoginRequest, LoginResponse, SignUpRequest, SignUpResponse } from '../types/auth';
 
 export const authService = {
   login: (payload: LoginRequest) =>
@@ -10,7 +10,7 @@ export const authService = {
     }),
 
   signup: (payload: SignUpRequest) =>
-    apiRequest<unknown>('/auth/signup', {
+    apiRequest<SignUpResponse>('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(payload),
       auth: false,

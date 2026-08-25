@@ -14,13 +14,14 @@ import {
   tryRefreshSession,
 } from '../services/api';
 import { authService } from '../services/authService';
-import { LoginRequest, LoginResponse } from '../types/auth';
+import { LoginRequest, LoginResponse, SignUpRequest } from '../types/auth';
 
 type AuthContextValue = {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (payload: LoginRequest) => Promise<LoginResponse>;
+  signupAndEnter: (payload: SignUpRequest) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -67,15 +68,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => setOnSessionInvalid(null);
   }, [queryClient]);
 
+  const applySession = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      await authToken.set(accessToken, refreshToken);
+      setToken(accessToken);
+      await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+    },
+    [queryClient],
+  );
+
   const login = useCallback(
     async (payload: LoginRequest) => {
       const response = await authService.login(payload);
-      await authToken.set(response.access_token, response.refresh_token);
-      setToken(response.access_token);
-      await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      await applySession(response.access_token, response.refresh_token);
       return response;
     },
-    [queryClient],
+    [applySession],
+  );
+
+  const signupAndEnter = useCallback(
+    async (payload: SignUpRequest) => {
+      const response = await authService.signup(payload);
+      if (response.access_token && response.refresh_token) {
+        await applySession(response.access_token, response.refresh_token);
+        return;
+      }
+
+      await login({ email: payload.email, password: payload.password });
+    },
+    [applySession, login],
   );
 
   const logout = useCallback(async () => {
@@ -97,9 +118,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isAuthenticated: Boolean(token),
       isLoading,
       login,
+      signupAndEnter,
       logout,
     }),
-    [token, isLoading, login, logout],
+    [token, isLoading, login, signupAndEnter, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

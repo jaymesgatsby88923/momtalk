@@ -16,3 +16,8 @@ export type LoginResponse = {
   access_token: string;
   refresh_token: string;
 };
+
+export type SignUpResponse = {
+  access_token?: string | null;
+  refresh_token?: string | null;
+};

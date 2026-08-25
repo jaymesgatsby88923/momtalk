@@ -63,7 +63,7 @@ const POST_TYPE_OPTIONS: PostTypeOption[] = [
     label: 'Asking a Question',
     description: 'I have a question and hope other moms can help.',
     icon: 'help-circle',
-    iconColor: theme.colors.reactionMeToo,
+    iconColor: '#3B82F6',
     iconBg: '#DBEAFE',
   },
   {
