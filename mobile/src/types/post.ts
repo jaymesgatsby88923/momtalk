@@ -1,3 +1,5 @@
+export type ReactionType = 'im_here' | 'me_too' | 'you_got_this' | 'love_this';
+
 export type Post = {
   post_id: string;
   title: string;
@@ -5,9 +7,15 @@ export type Post = {
   created_at: string;
   im_here: number;
   me_too: number;
+  you_got_this?: number;
   love_this: number;
   comment_count: number;
-  community_name: string | null;
+  community_name?: string | null;
+  display_name?: string | null;
+  user_id?: string;
+  community_id?: string;
+  my_reaction?: ReactionType | null;
+  is_pinned?: boolean;
 };
 
 export type PostComment = {
@@ -29,7 +37,9 @@ export type PostDetail = {
   user_id: string;
   im_here: number;
   me_too: number;
+  you_got_this?: number;
   love_this: number;
+  my_reaction?: ReactionType | null;
   image_url: string | null;
   community_id: string | null;
   community_name: string | null;
@@ -41,6 +51,15 @@ export type CommentLikeResponse = {
   comment_id: string;
   like_count: number;
   liked_by_me: boolean;
+};
+
+export type PostReactionResponse = {
+  post_id: string;
+  im_here: number;
+  me_too: number;
+  you_got_this: number;
+  love_this: number;
+  my_reaction: ReactionType | null;
 };
 
 export type FeedType = 'forYou' | 'popular' | 'latest' | 'provideSupport';

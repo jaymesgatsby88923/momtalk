@@ -1,76 +1,94 @@
 import { StyleSheet, View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './AppText';
-import { Post } from '../types/post';
+import { ReactionBar } from './ReactionBar';
+import { Post, ReactionType } from '../types/post';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
 import { theme } from '../theme';
 
 type PostCardProps = {
   post: Post;
   onPress?: () => void;
+  header?: 'community' | 'author';
+  pinned?: boolean;
+  onReact?: (type: ReactionType) => void;
 };
 
-type ReactionItemProps = {
-  emoji: string;
-  label: string;
-  count: number;
-};
+export function PostCard({
+  post,
+  onPress,
+  header = 'community',
+  pinned = false,
+  onReact,
+}: PostCardProps) {
+  const showPinned = pinned || Boolean(post.is_pinned);
+  const timestamp = post.created_at ? formatTimeAgo(post.created_at) : '';
 
-function ReactionItem({ emoji, label, count }: ReactionItemProps) {
   return (
-    <View style={styles.reactionItem}>
-      <AppText style={styles.reactionEmoji}>{emoji}</AppText>
-      <AppText variant="caption" style={styles.reactionLabel}>
-        {label}
-      </AppText>
-      <AppText variant="caption" color="textSecondary">
-        {count}
-      </AppText>
-    </View>
-  );
-}
-
-export function PostCard({ post, onPress }: PostCardProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [pressed && onPress ? styles.cardPressed : undefined]}
-    >
-      <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.avatar} />
-        <View style={styles.headerText}>
-          {post.community_name ? (
-            <AppText variant="caption" color="primary" style={styles.communityName}>
-              {post.community_name}
-            </AppText>
-          ) : null}
-          <AppText variant="caption" color="textMuted">
-            {formatTimeAgo(post.created_at)}
+    <View style={styles.card}>
+      {showPinned ? (
+        <View style={styles.pinnedBadge}>
+          <Ionicons name="pin" size={12} color={theme.colors.primary} />
+          <AppText variant="caption" color="primary" style={styles.pinnedText}>
+            Pinned by Admins
           </AppText>
         </View>
-      </View>
+      ) : null}
 
-      <AppText variant="subtitle" style={styles.title}>
-        {post.title}
-      </AppText>
-      <AppText variant="body" color="textSecondary" style={styles.content}>
-        {post.content}
-      </AppText>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        style={({ pressed }) => [pressed && onPress ? styles.bodyPressed : undefined]}
+      >
+        <View style={styles.header}>
+          <View style={styles.avatar} />
+          <View style={styles.headerText}>
+            {header === 'author' ? (
+              <View style={styles.nameRow}>
+                <AppText variant="body" style={styles.authorName}>
+                  {post.display_name ?? 'Community member'}
+                </AppText>
+                <View style={styles.badge}>
+                  <AppText variant="caption" color="primary" style={styles.badgeText}>
+                    Member
+                  </AppText>
+                </View>
+              </View>
+            ) : post.community_name ? (
+              <AppText variant="caption" color="primary" style={styles.communityName}>
+                {post.community_name}
+              </AppText>
+            ) : null}
+            {timestamp ? (
+              <AppText variant="caption" color="textMuted">
+                {timestamp}
+              </AppText>
+            ) : null}
+          </View>
+        </View>
+
+        <AppText variant="subtitle" style={styles.title}>
+          {post.title}
+        </AppText>
+        <AppText
+          variant="body"
+          color="textSecondary"
+          numberOfLines={3}
+          style={styles.content}
+        >
+          {post.content}
+        </AppText>
+      </Pressable>
 
       <View style={styles.footer}>
-        <ReactionItem emoji="💜" label="I'm Here" count={post.im_here} />
-        <ReactionItem emoji="🤝" label="Me Too" count={post.me_too} />
-        <ReactionItem emoji="❤️" label="Love This" count={post.love_this} />
-        <View style={styles.reactionItem}>
-          <AppText style={styles.reactionEmoji}>💬</AppText>
-          <AppText variant="caption" color="textSecondary">
-            {post.comment_count}
-          </AppText>
-        </View>
+        <ReactionBar
+          counts={post}
+          commentCount={post.comment_count ?? 0}
+          myReaction={post.my_reaction}
+          onReact={onReact}
+        />
       </View>
-      </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -82,8 +100,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.base,
     ...theme.shadows.soft,
   },
-  cardPressed: {
+  bodyPressed: {
     opacity: 0.92,
+  },
+  pinnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: theme.spacing.sm,
+  },
+  pinnedText: {
+    fontWeight: theme.fontWeight.medium,
   },
   header: {
     flexDirection: 'row',
@@ -101,6 +128,25 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  authorName: {
+    fontWeight: theme.fontWeight.semibold,
+  },
+  badge: {
+    backgroundColor: theme.colors.chipPurpleBg,
+    borderRadius: 999,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: theme.fontWeight.medium,
+  },
   communityName: {
     fontWeight: theme.fontWeight.semibold,
   },
@@ -109,26 +155,11 @@ const styles = StyleSheet.create({
   },
   content: {
     marginBottom: theme.spacing.base,
+    lineHeight: 20,
   },
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     paddingTop: theme.spacing.md,
-  },
-  reactionItem: {
-    alignItems: 'center',
-    minWidth: 56,
-    gap: 2,
-  },
-  reactionEmoji: {
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  reactionLabel: {
-    fontSize: 10,
-    textAlign: 'center',
   },
 });

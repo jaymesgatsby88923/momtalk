@@ -79,6 +79,12 @@ export function getLikeCount(post: {
   love_this?: number;
   im_here?: number;
   me_too?: number;
+  you_got_this?: number;
 }): number {
-  return (post.love_this ?? 0) + (post.im_here ?? 0) + (post.me_too ?? 0);
+  return (
+    (post.love_this ?? 0) +
+    (post.im_here ?? 0) +
+    (post.me_too ?? 0) +
+    (post.you_got_this ?? 0)
+  );
 }

@@ -1,9 +1,9 @@
 export { AppScreen } from './AppScreen';
 export { AppText } from './AppText';
 export { AppInput } from './AppInput';
-export { CommunityDiscussionCard } from './CommunityDiscussionCard';
 export { CommunityListItem } from './CommunityListItem';
 export { PostCard } from './PostCard';
 export { PostTypeCard } from './PostTypeCard';
 export { PrimaryButton } from './PrimaryButton';
+export { ReactionBar } from './ReactionBar';
 export { ScreenContainer } from './ScreenContainer';

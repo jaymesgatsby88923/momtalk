@@ -13,16 +13,20 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AppScreen, AppText, CommunityDiscussionCard } from '../components';
+import { AppScreen, AppText, PostCard } from '../components';
 import { CommunitiesStackParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
 import { communityService } from '../services/communityService';
+import { postService } from '../services/postService';
 import { CommunityPost } from '../types/community';
+import { ReactionType } from '../types/post';
 import { theme } from '../theme';
 import {
   formatMemberCount,
   getCommunityIcon,
+  getLikeCount,
 } from '../utils/communityHelpers';
+import { mergeReactionResponse, previewReaction } from '../utils/postReactions';
 
 type DetailRouteProp = RouteProp<CommunitiesStackParamList, 'CommunityDetail'>;
 type NavigationProp = NativeStackNavigationProp<
@@ -57,6 +61,7 @@ export function CommunityDetailScreen() {
   const [joinLoading, setJoinLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedOnce = useRef(false);
+  const reactingIds = useRef(new Set<string>());
 
   const icon = getCommunityIcon(name);
   const memberLabel = formatMemberCount(membersCount);
@@ -106,6 +111,35 @@ export function CommunityDetailScreen() {
     navigation.navigate('PostDetail', { postId });
   };
 
+  const handleReact = async (post: CommunityPost, type: ReactionType) => {
+    if (reactingIds.current.has(post.post_id)) {
+      return;
+    }
+
+    reactingIds.current.add(post.post_id);
+    const previous = post;
+    setPosts((current) =>
+      current.map((item) =>
+        item.post_id === post.post_id ? previewReaction(item, type) : item,
+      ),
+    );
+
+    try {
+      const result = await postService.setReaction(post.post_id, type);
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_id === post.post_id ? mergeReactionResponse(item, result) : item,
+        ),
+      );
+    } catch {
+      setPosts((current) =>
+        current.map((item) => (item.post_id === post.post_id ? previous : item)),
+      );
+    } finally {
+      reactingIds.current.delete(post.post_id);
+    }
+  };
+
   const filteredPosts = useMemo(() => {
     let result = [...posts];
 
@@ -119,13 +153,7 @@ export function CommunityDetailScreen() {
     }
 
     if (sortBy === 'popular') {
-      result.sort(
-        (a, b) =>
-          (b.love_this ?? 0) +
-          (b.im_here ?? 0) +
-          (b.me_too ?? 0) -
-          ((a.love_this ?? 0) + (a.im_here ?? 0) + (a.me_too ?? 0)),
-      );
+      result.sort((a, b) => getLikeCount(b) - getLikeCount(a));
     } else {
       result.sort((a, b) => {
         const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -203,9 +231,11 @@ export function CommunityDetailScreen() {
         data={regularPosts}
         keyExtractor={(item) => item.post_id}
         renderItem={({ item }) => (
-          <CommunityDiscussionCard
+          <PostCard
             post={item}
+            header="author"
             onPress={() => handlePostPress(item.post_id)}
+            onReact={(type) => handleReact(item, type)}
           />
         )}
         contentContainerStyle={styles.listContent}
@@ -222,11 +252,13 @@ export function CommunityDetailScreen() {
             {pinnedPosts.length > 0 ? (
               <View style={styles.pinnedSection}>
                 {pinnedPosts.map((post) => (
-                  <CommunityDiscussionCard
+                  <PostCard
                     key={post.post_id}
                     post={post}
+                    header="author"
                     pinned
                     onPress={() => handlePostPress(post.post_id)}
+                    onReact={(type) => handleReact(post, type)}
                   />
                 ))}
               </View>

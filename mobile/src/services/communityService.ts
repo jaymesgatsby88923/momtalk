@@ -12,7 +12,17 @@ function normalizePosts(
     return [];
   }
 
-  return Array.isArray(posts) ? posts : [posts];
+  const list = Array.isArray(posts) ? posts : [posts];
+
+  return list.map((post) => ({
+    ...post,
+    im_here: post.im_here ?? 0,
+    me_too: post.me_too ?? 0,
+    you_got_this: post.you_got_this ?? 0,
+    love_this: post.love_this ?? 0,
+    comment_count: post.comment_count ?? 0,
+    created_at: post.created_at ?? '',
+  }));
 }
 
 export const communityService = {

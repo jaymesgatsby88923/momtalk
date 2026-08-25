@@ -14,36 +14,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AppScreen, AppText } from '../components';
+import { AppScreen, AppText, ReactionBar } from '../components';
 import { HomeStackParamList } from '../navigation/types';
 import { ApiError } from '../services/api';
 import { postService } from '../services/postService';
-import { PostComment, PostDetail } from '../types/post';
+import { PostComment, PostDetail, ReactionType } from '../types/post';
 import { theme } from '../theme';
 import { formatTimeAgo } from '../utils/formatTimeAgo';
+import { mergeReactionResponse, previewReaction } from '../utils/postReactions';
 
 type DetailRouteProp = RouteProp<HomeStackParamList, 'PostDetail'>;
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList, 'PostDetail'>;
-
-type ReactionItemProps = {
-  emoji: string;
-  label: string;
-  count: number;
-};
-
-function ReactionItem({ emoji, label, count }: ReactionItemProps) {
-  return (
-    <View style={styles.reactionItem}>
-      <AppText style={styles.reactionEmoji}>{emoji}</AppText>
-      <AppText variant="caption" style={styles.reactionLabel}>
-        {label}
-      </AppText>
-      <AppText variant="caption" color="textSecondary">
-        {count}
-      </AppText>
-    </View>
-  );
-}
 
 type CommentRowProps = {
   comment: PostComment;
@@ -109,6 +90,7 @@ export function PostDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<PostComment | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [reacting, setReacting] = useState(false);
 
   const fetchDetail = useCallback(
     async (isRefresh = false) => {
@@ -137,6 +119,30 @@ export function PostDetailScreen() {
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
+
+  const handleReact = async (type: ReactionType) => {
+    if (!post || reacting) {
+      return;
+    }
+
+    const previous = post;
+    setReacting(true);
+    setPost(previewReaction(post, type));
+
+    try {
+      const result = await postService.setReaction(post.post_id, type);
+      setPost((current) =>
+        current ? mergeReactionResponse(current, result) : current,
+      );
+    } catch (err) {
+      setPost(previous);
+      const message =
+        err instanceof ApiError ? err.message : 'Could not update reaction.';
+      setError(message);
+    } finally {
+      setReacting(false);
+    }
+  };
 
   const handleToggleCommentLike = async (comment: PostComment) => {
     setLikeLoadingId(comment.comment_id);
@@ -304,15 +310,12 @@ export function PostDetailScreen() {
           ) : null}
 
           <View style={styles.reactionsRow}>
-            <ReactionItem emoji="💜" label="I'm Here" count={post.im_here} />
-            <ReactionItem emoji="🤝" label="Me Too" count={post.me_too} />
-            <ReactionItem emoji="❤️" label="Love This" count={post.love_this} />
-            <View style={styles.reactionItem}>
-              <AppText style={styles.reactionEmoji}>💬</AppText>
-              <AppText variant="caption" color="textSecondary">
-                {post.comments.length}
-              </AppText>
-            </View>
+            <ReactionBar
+              counts={post}
+              commentCount={post.comments.length}
+              myReaction={post.my_reaction}
+              onReact={handleReact}
+            />
           </View>
 
           {error ? (
@@ -455,27 +458,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border,
   },
   reactionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: theme.colors.border,
     paddingVertical: theme.spacing.md,
     marginBottom: theme.spacing.base,
-  },
-  reactionItem: {
-    alignItems: 'center',
-    minWidth: 56,
-    gap: 2,
-  },
-  reactionEmoji: {
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  reactionLabel: {
-    fontSize: 10,
-    textAlign: 'center',
   },
   inlineError: {
     marginBottom: theme.spacing.sm,

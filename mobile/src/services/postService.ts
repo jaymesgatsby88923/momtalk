@@ -4,6 +4,8 @@ import {
   PostComment,
   PostCreateRequest,
   PostDetail,
+  PostReactionResponse,
+  ReactionType,
 } from '../types/post';
 
 export const postService = {
@@ -24,6 +26,12 @@ export const postService = {
   unlikeComment: (commentId: string) =>
     apiRequest<CommentLikeResponse>(`/posts/comments/${commentId}/like`, {
       method: 'DELETE',
+    }),
+
+  setReaction: (postId: string, reaction: ReactionType) =>
+    apiRequest<PostReactionResponse>(`/posts/${postId}/reaction`, {
+      method: 'POST',
+      body: JSON.stringify({ reaction }),
     }),
 
   createComment: (postId: string, content: string, parentCommentId?: string) =>

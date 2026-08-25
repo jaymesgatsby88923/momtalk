@@ -1,3 +1,5 @@
+import type { Post } from './post';
+
 export type Community = {
   community_id: string;
   name: string;
@@ -10,21 +12,7 @@ export type Community = {
   category?: string;
 };
 
-export type CommunityPost = {
-  post_id: string;
-  title: string;
-  content: string;
-  user_id?: string;
-  community_id?: string;
-  created_at?: string;
-  display_name?: string;
-  comment_count?: number;
-  love_this?: number;
-  im_here?: number;
-  me_too?: number;
-  /** TODO: wire when backend supports pinned posts */
-  is_pinned?: boolean;
-};
+export type CommunityPost = Post;
 
 export type CommunityDetailResponse = {
   community: {

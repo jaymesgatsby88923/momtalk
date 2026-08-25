@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -15,8 +15,10 @@ import { AppScreen, AppText, PostCard } from '../components';
 import { useAuth } from '../hooks/useAuth';
 import { HomeStackParamList } from '../navigation/types';
 import { apiRequest, ApiError } from '../services/api';
-import { FeedType, Post } from '../types/post';
+import { postService } from '../services/postService';
+import { FeedType, Post, ReactionType } from '../types/post';
 import { theme } from '../theme';
+import { mergeReactionResponse, previewReaction } from '../utils/postReactions';
 
 const endpointMap: Record<FeedType, string> = {
   forYou: '/posts/for-you',
@@ -46,6 +48,7 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFeed, setSelectedFeed] = useState<FeedType>('forYou');
+  const reactingIds = useRef(new Set<string>());
 
   const fetchPosts = useCallback(
     async (feed: FeedType, isRefresh = false) => {
@@ -95,6 +98,39 @@ export function HomeScreen() {
     }
   };
 
+  const handleReact = async (post: Post, type: ReactionType) => {
+    if (reactingIds.current.has(post.post_id)) {
+      return;
+    }
+
+    reactingIds.current.add(post.post_id);
+    const previous = post;
+    setPosts((current) =>
+      current.map((item) =>
+        item.post_id === post.post_id ? previewReaction(item, type) : item,
+      ),
+    );
+
+    try {
+      const result = await postService.setReaction(post.post_id, type);
+      setPosts((current) =>
+        current.map((item) =>
+          item.post_id === post.post_id ? mergeReactionResponse(item, result) : item,
+        ),
+      );
+    } catch (err) {
+      setPosts((current) =>
+        current.map((item) => (item.post_id === post.post_id ? previous : item)),
+      );
+
+      if (err instanceof ApiError && err.status === 401) {
+        await logout();
+      }
+    } finally {
+      reactingIds.current.delete(post.post_id);
+    }
+  };
+
   const renderContent = () => {
     if (authLoading || !isAuthenticated) {
       return (
@@ -135,6 +171,7 @@ export function HomeScreen() {
           <PostCard
             post={item}
             onPress={() => navigation.navigate('PostDetail', { postId: item.post_id })}
+            onReact={(type) => handleReact(item, type)}
           />
         )}
         contentContainerStyle={styles.listContent}
