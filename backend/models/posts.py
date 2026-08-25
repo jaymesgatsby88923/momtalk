@@ -11,7 +11,8 @@ class PostCreateRequest(BaseModel):
     image_url: Optional[str] = None
     post_type: str
     post_category: str
-    user_id: str
+    user_id: Optional[str] = None
+    community_id: Optional[str] = None
 
 
 class PostList(BaseModel):

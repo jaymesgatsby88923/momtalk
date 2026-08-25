@@ -426,7 +426,39 @@ def get_post_detail(post_id: str, current_user):
     attach_my_reactions([post], current_user["user_id"])
     return post
 
+
+def _require_community_membership(community_id: str, user_id: str) -> None:
+    community_result = (
+        admin_supabase
+        .table("Communities")
+        .select("community_id")
+        .eq("community_id", community_id)
+        .execute()
+    )
+    if not community_result.data:
+        raise HTTPException(status_code=404, detail="Community not found")
+
+    membership_result = (
+        admin_supabase
+        .table("User_Community")
+        .select("user_community_id")
+        .eq("community_id", community_id)
+        .eq("user_id", user_id)
+        .eq("active", True)
+        .execute()
+    )
+    if not membership_result.data:
+        raise HTTPException(
+            status_code=403,
+            detail="Join this community before posting in it",
+        )
+
+
 def create_post(post_create_request: PostCreateRequest, current_user):
+    community_id = (post_create_request.community_id or "").strip() or None
+    if community_id:
+        _require_community_membership(community_id, current_user["user_id"])
+
     result = (
         admin_supabase
         .table("Posts")
@@ -437,9 +469,10 @@ def create_post(post_create_request: PostCreateRequest, current_user):
             "post_type": post_create_request.post_type,
             "post_category": post_create_request.post_category,
             "user_id": current_user["user_id"],
+            "community_id": community_id,
         })
         .execute()
-    ) 
+    )
     return result.data
 
 def set_comment_like(comment_id: str, active: bool, current_user: dict) -> dict:
