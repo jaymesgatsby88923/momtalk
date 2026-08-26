@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 from database.supabase import admin_supabase
 from models.journal import JournalCreateRequest, JournalUpdateRequest
+from services import user_service
 
 
 FEELING_MAX = 100
@@ -44,8 +45,19 @@ def _format_entry(row: dict) -> dict:
         "feeling": row["feeling"],
         "description": row.get("description"),
         "visibility": row["visibility"],
+        "parent_stage": row.get("parent_stage"),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+    }
+
+
+def _format_feed_item(row: dict) -> dict:
+    return {
+        "journal_entry_id": row["journal_entry_id"],
+        "feeling": row["feeling"],
+        "description": row.get("description"),
+        "parent_stage": row.get("parent_stage"),
+        "created_at": row["created_at"],
     }
 
 
@@ -70,6 +82,7 @@ def create_entry(request: JournalCreateRequest, current_user: dict) -> dict:
     feeling = _normalize_feeling(request.feeling)
     description = _normalize_description(request.description)
     now = datetime.now(timezone.utc).isoformat()
+    parent_stage = user_service.get_parent_stage_for_user(current_user["user_id"])
 
     insert_result = (
         admin_supabase
@@ -79,6 +92,7 @@ def create_entry(request: JournalCreateRequest, current_user: dict) -> dict:
             "feeling": feeling,
             "description": description,
             "visibility": request.visibility,
+            "parent_stage": parent_stage,
             "created_at": now,
             "updated_at": now,
         })
@@ -102,6 +116,19 @@ def list_entries(current_user: dict) -> list[dict]:
     )
 
     return [_format_entry(row) for row in (result.data or [])]
+
+
+def list_anonymous_feed(current_user: dict) -> list[dict]:
+    result = (
+        admin_supabase
+        .table("Journal_Entries")
+        .select("journal_entry_id, feeling, description, parent_stage, created_at")
+        .eq("visibility", "anonymous")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return [_format_feed_item(row) for row in (result.data or [])]
 
 
 def get_entry(journal_entry_id: str, current_user: dict) -> dict:
@@ -128,6 +155,10 @@ def update_entry(
 
     if request.visibility is not None:
         updates["visibility"] = request.visibility
+        if request.visibility == "anonymous" and not entry.get("parent_stage"):
+            updates["parent_stage"] = user_service.get_parent_stage_for_user(
+                current_user["user_id"]
+            )
 
     if len(updates) == 1:
         return _format_entry(entry)

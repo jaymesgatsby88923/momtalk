@@ -3,6 +3,7 @@ import { Affirmation, SaveAffirmationRequest } from '../types/affirmation';
 import {
   JournalCreateRequest,
   JournalEntry,
+  JournalFeedItem,
   JournalUpdateRequest,
 } from '../types/journal';
 
@@ -22,6 +23,8 @@ export const restoreService = {
     }),
 
   listEntries: () => apiRequest<JournalEntry[]>('/restore'),
+
+  listFeed: () => apiRequest<JournalFeedItem[]>('/restore/feed'),
 
   getEntry: (journalEntryId: string) =>
     apiRequest<JournalEntry>(`/restore/${journalEntryId}`),

@@ -23,5 +23,14 @@ class JournalEntryResponse(BaseModel):
     feeling: str
     description: Optional[str] = None
     visibility: Visibility
+    parent_stage: Optional[str] = None
     created_at: str
     updated_at: str
+
+
+class JournalFeedItemResponse(BaseModel):
+    journal_entry_id: str
+    feeling: str
+    description: Optional[str] = None
+    parent_stage: Optional[str] = None
+    created_at: str

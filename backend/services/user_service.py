@@ -83,6 +83,18 @@ def update_profile(user_id: str, request: ProfileUpdateRequest) -> dict:
     return get_profile(user_id)
 
 
+def get_parent_stage_for_user(user_id: str) -> str | None:
+    child_result = (
+        admin_supabase
+        .table("Child")
+        .select("birth_date, due_date")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    child = child_result.data[0] if child_result.data else None
+    return _derive_parent_stage(child)
+
+
 def _derive_parent_stage(child: dict | None) -> str | None:
     """
     Turn Child dates into a soft UI label — avoids exposing exact dates on profile.

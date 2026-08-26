@@ -97,7 +97,7 @@ export function RestoreScreen() {
         visibility === 'private' ? 'Saved privately' : 'Shared anonymously',
         visibility === 'private'
           ? 'Your entry was saved to your Restore journal.'
-          : 'Your entry was saved to your journal and shared anonymously.',
+          : 'Your entry was saved to your journal and will appear on For You without your name.',
       );
     } catch (err) {
       const message =
@@ -233,7 +233,7 @@ export function RestoreScreen() {
             Share anonymously
           </AppText>
           <AppText variant="caption" color="textSecondary" style={styles.choiceDescription}>
-            Share your experience with other moms without attaching your name.
+            Share your experience with other moms on For You without attaching your name.
           </AppText>
           <Ionicons
             name="chevron-forward"

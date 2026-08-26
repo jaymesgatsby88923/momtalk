@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends
 
 from dependencies.dependencies import get_current_user
 from models.affirmation import AffirmationResponse, SaveAffirmationRequest
-from models.journal import JournalCreateRequest, JournalEntryResponse, JournalUpdateRequest
+from models.journal import (
+    JournalCreateRequest,
+    JournalEntryResponse,
+    JournalFeedItemResponse,
+    JournalUpdateRequest,
+)
 from services import affirmation_service, journal_service
 
 router = APIRouter(
@@ -25,6 +30,11 @@ def save_affirmation(
         current_user["user_id"],
         request.affirmation_id,
     )
+
+
+@router.get("/feed", response_model=list[JournalFeedItemResponse])
+def list_journal_feed(current_user=Depends(get_current_user)):
+    return journal_service.list_anonymous_feed(current_user)
 
 
 @router.post("", response_model=JournalEntryResponse)

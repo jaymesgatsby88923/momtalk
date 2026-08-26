@@ -2,6 +2,7 @@ export { AppScreen } from './AppScreen';
 export { AppText } from './AppText';
 export { AppInput } from './AppInput';
 export { CommunityListItem } from './CommunityListItem';
+export { FeelingCard } from './FeelingCard';
 export { PostCard } from './PostCard';
 export { PostTypeCard } from './PostTypeCard';
 export { PrimaryButton } from './PrimaryButton';

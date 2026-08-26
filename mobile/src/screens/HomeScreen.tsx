@@ -11,20 +11,20 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { AppScreen, AppText, PostCard } from '../components';
+import { AppScreen, AppText, FeelingCard, PostCard } from '../components';
 import { useAuth } from '../hooks/useAuth';
 import { HomeStackParamList } from '../navigation/types';
 import { apiRequest, ApiError } from '../services/api';
 import { postService } from '../services/postService';
+import { restoreService } from '../services/restoreService';
+import { JournalFeedItem } from '../types/journal';
 import { FeedType, Post, ReactionType } from '../types/post';
 import { theme } from '../theme';
 import { mergeReactionResponse, previewReaction } from '../utils/postReactions';
 
-const endpointMap: Record<FeedType, string> = {
-  forYou: '/posts/for-you',
+const endpointMap: Record<Exclude<FeedType, 'forYou'>, string> = {
   popular: '/posts/popular',
   latest: '/posts/latest',
-  provideSupport: '/posts/provide-support',
 };
 
 type FeedTab = {
@@ -37,13 +37,13 @@ const feedTabs: FeedTab[] = [
   { id: 'forYou', label: 'For You', icon: 'sparkles-outline' },
   { id: 'popular', label: 'Popular', icon: 'flame-outline' },
   { id: 'latest', label: 'Latest', icon: 'time-outline' },
-  { id: 'provideSupport', label: 'Provide Support', icon: 'heart-outline' },
 ];
 
 export function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'HomeFeed'>>();
   const { isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [journalFeed, setJournalFeed] = useState<JournalFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +64,15 @@ export function HomeScreen() {
       setError(null);
 
       try {
-        const data = await apiRequest<Post[]>(endpointMap[feed]);
-        setPosts(data);
+        if (feed === 'forYou') {
+          const data = await restoreService.listFeed();
+          setJournalFeed(data);
+          setPosts([]);
+        } else {
+          const data = await apiRequest<Post[]>(endpointMap[feed]);
+          setPosts(data);
+          setJournalFeed([]);
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           await logout();
@@ -76,6 +83,7 @@ export function HomeScreen() {
           err instanceof ApiError ? err.message : 'Something went wrong loading posts.';
         setError(message);
         setPosts([]);
+        setJournalFeed([]);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -160,6 +168,32 @@ export function HomeScreen() {
             </AppText>
           </Pressable>
         </View>
+      );
+    }
+
+    if (selectedFeed === 'forYou') {
+      return (
+        <FlatList
+          data={journalFeed}
+          keyExtractor={(item) => item.journal_entry_id}
+          renderItem={({ item }) => <FeelingCard entry={item} />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchPosts(selectedFeed, true)}
+              tintColor={theme.colors.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <AppText variant="body" color="textSecondary" style={styles.emptyText}>
+                When moms share anonymously from Restore, they show up here.
+              </AppText>
+            </View>
+          }
+        />
       );
     }
 
@@ -289,6 +323,10 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
     marginBottom: theme.spacing.base,
+  },
+  emptyText: {
+    textAlign: 'center',
+    lineHeight: 22,
   },
   retryButton: {
     padding: theme.spacing.sm,

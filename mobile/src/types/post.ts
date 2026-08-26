@@ -62,7 +62,7 @@ export type PostReactionResponse = {
   my_reaction: ReactionType | null;
 };
 
-export type FeedType = 'forYou' | 'popular' | 'latest' | 'provideSupport';
+export type FeedType = 'forYou' | 'popular' | 'latest';
 
 /** Matches backend PostCreateRequest in backend/models/posts.py */
 export type PostCreateRequest = {
