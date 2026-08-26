@@ -23,3 +23,8 @@ class LogoutRequest(BaseModel):
     refresh_token: str
     access_token: Optional[str] = None
 
+
+class SignUpResponse(BaseModel):
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+
